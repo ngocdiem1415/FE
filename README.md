@@ -1,2 +1,2 @@
 # FE
-This is the workspace for the Sports News Website Project
+This is the workspace for the Project Chat
