@@ -1,50 +1,33 @@
-const API_URL = "https://chat.longapp.site/";
+import { sendSocket } from "./socket";
 
-// register
-export const register = async (user: string, pass:string) => {
-    const res = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            action: "onchat",
-            data: {
-                event: "REGISTER",
-                data: {
-                    username: user,
-                    password: pass
-                },
-            },
-         }),
-    });
-
-    if (!res.ok) {
-        throw new Error("Đăng ký thất bại");
-    }
-
-    return res.json();
+export const register = (user: string, pass: string) => {
+  sendSocket({
+    action: "onchat",
+    data: {
+      event: "REGISTER",
+      data: { user, pass },
+    },
+  });
 };
 
-export const login = async (user: string, pass:string) => {
-    const res = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            action: "onchat",
-            data: {
-                event: "LOGIN",
-                data: {
-                    username: user,
-                    password: pass
-                },
-            },
-         }),
-    });
-    if (!res.ok) {
-        throw new Error("Đăng nhập thất bại");
-    }
-    return res.json();
+export const login = (user: string, pass: string) => {
+  sendSocket({
+    action: "onchat",
+    data: {
+      event: "LOGIN",
+      data: { user, pass },
+    },
+  });
+};
+
+export const relogin = (code: string) => {
+  sendSocket({
+    action: "onchat",
+    data: {
+      event: "LOGIN_RE",
+      data: {
+        RE_LOGIN_CODE: code,
+      },
+    },
+  });
 };
