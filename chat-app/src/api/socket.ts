@@ -23,7 +23,7 @@ export function connectSocket(
   };
 
   socket.onclose = () => {
-    console.log("❌ WS closed");
+    console.log("WS closed");
     socket = null;
   };
 }
