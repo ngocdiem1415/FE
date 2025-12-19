@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { register } from "../api/authApi";
+import { useEffect, useState } from "react";
+import { register, relogin } from "../api/authApi";
+import { connectSocket } from "../api/socket";
 import { useNavigate, Link } from "react-router-dom";
-import "../styles/LoginPage.css"; // dùng chung CSS với Login
+import "../styles/LoginPage.css";
 
 const RegisterPage = () => {
   const [user, setUser] = useState("");
@@ -9,30 +10,30 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleRegister = async () => {
+  useEffect(() => {
+    connectSocket((msg) => {
+      // REGISTER thành công → server yêu cầu RE_LOGIN
+      if (msg.event === "RE_LOGIN" && msg.status === "success") {
+        const code = msg.data?.RE_LOGIN_CODE;
+        localStorage.setItem("RE_LOGIN_CODE", code);
+        relogin(code); 
+      }
+
+      // LOGIN_RE thành công
+      if (msg.event === "LOGIN" && msg.status === "success") {
+        localStorage.setItem("user", user);
+        navigate("/chat");
+      }
+    });
+  }, [navigate, user]);
+
+  const handleRegister = () => {
     if (!user || !pass) {
       alert("Vui lòng nhập đầy đủ thông tin");
       return;
     }
-
-    try {
-      setLoading(true);
-      const res = await register(user, pass);
-
-      if (res.status === "success" && res.event === "RE_LOGIN") {
-        localStorage.setItem("RE_LOGIN_CODE", res.data.RE_LOGIN_CODE);
-        localStorage.setItem("user", user);
-
-        alert("Đăng ký thành công – tự động đăng nhập");
-        navigate("/chat");
-      } else {
-        alert("Đăng ký thất bại");
-      }
-    } catch {
-      alert("Không kết nối được server");
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    register(user, pass);
   };
 
   return (
