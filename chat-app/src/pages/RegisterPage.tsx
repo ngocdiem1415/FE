@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { register, relogin } from "../api/authApi";
+import { register } from "../api/authApi";
 import { connectSocket } from "../api/socket";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/LoginPage.css";
@@ -12,20 +12,21 @@ const RegisterPage = () => {
 
   useEffect(() => {
     connectSocket((msg) => {
-      // REGISTER thành công → server yêu cầu RE_LOGIN
-      if (msg.event === "RE_LOGIN" && msg.status === "success") {
-        const code = msg.data?.RE_LOGIN_CODE;
-        localStorage.setItem("RE_LOGIN_CODE", code);
-        relogin(code); 
+
+      // REGISTER thành công
+      if (msg.event === "REGISTER" && msg.status === "success") {
+        alert("Đăng ký thành công, vui lòng đăng nhập");
+        navigate("/login");
       }
 
-      // LOGIN_RE thành công
-      if (msg.event === "LOGIN" && msg.status === "success") {
-        localStorage.setItem("user", user);
-        navigate("/chat");
+      // REGISTER lỗi
+      if (msg.event === "REGISTER" && msg.status === "error") {
+        alert(msg.message || "Đăng ký thất bại");
+        setLoading(false);
       }
+
     });
-  }, [navigate, user]);
+  }, [navigate]);
 
   const handleRegister = () => {
     if (!user || !pass) {

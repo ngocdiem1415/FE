@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { connectSocket } from "../api/socket";
+import { connectSocket, sendSocket } from "../api/socket";
 import { login } from "../api/authApi";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/LoginPage.css";
@@ -11,13 +11,35 @@ const LoginPage = () => {
 
   useEffect(() => {
     connectSocket((msg) => {
-      if (msg.event === "LOGIN") {
-        if (msg.status === "success") {
-          localStorage.setItem("user", user);
-          navigate("/chat");
-        } else {
-          alert("Sai tài khoản hoặc mật khẩu");
-        }
+
+      // 🔹 BƯỚC 1: Server yêu cầu RE_LOGIN
+      if (msg.event === "RE_LOGIN" && msg.status === "success") {
+        const code = msg.data?.RE_LOGIN_CODE;
+        if (!code) return;
+
+        localStorage.setItem("RE_LOGIN_CODE", code);
+        localStorage.setItem("user", user);
+
+        // gửi lại RE_LOGIN để hoàn tất login
+        sendSocket({
+          action: "onchat",
+          data: {
+            event: "RE_LOGIN",
+            data: {
+              user,
+              code
+            }
+          }
+        });
+      }
+
+      // 🔹 BƯỚC 2: Login hoàn tất
+      if (msg.event === "LOGIN" && msg.status === "success") {
+        navigate("/chat");
+      }
+
+      if (msg.status === "error") {
+        alert("Sai tài khoản hoặc mật khẩu");
       }
     });
   }, [navigate, user]);
