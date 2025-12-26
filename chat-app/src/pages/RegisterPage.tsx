@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { register, relogin } from "../api/authApi";
-import { connectSocket } from "../api/socket";
+import { register, relogin } from "../services/authApi.ts";
+import { connectSocket } from "../api/socketClient.ts";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/LoginPage.css";
 

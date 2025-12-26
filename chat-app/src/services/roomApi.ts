@@ -1,4 +1,4 @@
-import { sendSocket } from "./socket";
+import { sendSocket } from "../api/socketClient.ts";
 
 export const createRoom = (name: string) => {
     sendSocket({
