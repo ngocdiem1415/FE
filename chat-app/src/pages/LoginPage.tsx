@@ -1,35 +1,33 @@
-import { useState } from "react";
-import { login } from "../api/authApi";
+import { useEffect, useState } from "react";
+import { connectSocket } from "../api/socketClient.ts";
+import { login } from "../services/authApi.ts";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/LoginPage.css";
 
 const LoginPage = () => {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
+  useEffect(() => {
+    connectSocket((msg) => {
+      if (msg.event === "LOGIN") {
+        if (msg.status === "success") {
+          localStorage.setItem("user", user);
+          navigate("/chat");
+        } else {
+          alert("Sai tài khoản hoặc mật khẩu");
+        }
+      }
+    });
+  }, [navigate, user]);
+
+  const handleLogin = () => {
     if (!user || !pass) {
-      alert("Vui lòng nhập đầy đủ thông tin");
+      alert("Vui lòng nhập đủ thông tin");
       return;
     }
-
-    try {
-      setLoading(true);
-      const res = await login(user, pass);
-
-      if (res.status === "success") {
-        localStorage.setItem("user", user);
-        navigate("/chat");
-      } else {
-        alert("Sai tài khoản hoặc mật khẩu");
-      }
-    } catch {
-      alert("Không kết nối được server");
-    } finally {
-      setLoading(false);
-    }
+    login(user, pass);
   };
 
   return (
@@ -54,12 +52,8 @@ const LoginPage = () => {
           />
         </div>
 
-        <button
-          className="login-button"
-          onClick={handleLogin}
-          disabled={loading}
-        >
-          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+        <button className="login-button" onClick={handleLogin}>
+          Đăng nhập
         </button>
 
         <p className="login-footer">
