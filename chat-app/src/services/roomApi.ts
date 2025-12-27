@@ -48,3 +48,12 @@ export const checkUserExist = (name: string) => {
         },
     });
 };
+
+export const getUserList = () => {
+    sendSocket({
+        action: "onchat",
+        data: {
+            event: "GET_USER_LIST",
+        },
+    });
+};
