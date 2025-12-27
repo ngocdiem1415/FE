@@ -1,39 +1,87 @@
+// src/api/socketClient.ts
 const WS_URL = "wss://chat.longapp.site/chat/chat";
 
-let socketClient: WebSocket | null = null;
+let socket: WebSocket | null = null;
+let connectPromise: Promise<void> | null = null;
 
-export function connectSocket(
-  onMessage: (data: any) => void
-) {
-  if (socketClient) return;
+type Handler = (data: any) => void;
+const handlers = new Set<Handler>();
 
-  socketClient = new WebSocket(WS_URL);
-
-  socketClient.onopen = () => {
-    console.log("WS connected");
-  };
-
-  socketClient.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    onMessage(data);
-  };
-
-  socketClient.onerror = (err) => {
-    console.error("WS error", err);
-  };
-
-  socketClient.onclose = () => {
-    console.log("WS closed");
-    socketClient = null;
-  };
+function isOpen(ws: WebSocket | null) {
+  return ws && ws.readyState === WebSocket.OPEN;
 }
 
+/**
+ * Connect WebSocket (singleton).
+ * - If already OPEN -> resolve immediately
+ * - If CONNECTING -> return same promise
+ */
+export function connectSocket(): Promise<void> {
+  if (isOpen(socket)) return Promise.resolve();
+  if (connectPromise) return connectPromise;
+
+  connectPromise = new Promise<void>((resolve, reject) => {
+    socket = new WebSocket(WS_URL);
+
+    socket.onopen = () => {
+      console.log("WS connected");
+      resolve();
+    };
+
+    socket.onmessage = (e) => {
+      try {
+        const raw = typeof e.data === "string" ? e.data : String(e.data);
+        const data = JSON.parse(raw);
+        handlers.forEach((cb) => cb(data));
+      } catch (err) {
+        console.error("WS message parse error:", err, e.data);
+      }
+    };
+
+    socket.onerror = () => {
+      console.error("WS error");
+      reject(new Error("WebSocket error"));
+    };
+
+    socket.onclose = () => {
+      console.warn("WS closed");
+      connectPromise = null;
+      socket = null;
+    };
+  }).catch((err) => {
+    // allow reconnect next time
+    connectPromise = null;
+    socket = null;
+    throw err;
+  });
+
+  return connectPromise;
+}
+
+/**
+ * Subscribe socket messages. Returns unsubscribe().
+ */
+export function onSocketMessage(cb: Handler) {
+  handlers.add(cb);
+  return () => handlers.delete(cb);
+}
+
+/**
+ * Send payload via WS (must be connected).
+ */
 export function sendSocket(payload: any) {
-  if (socketClient?.readyState === WebSocket.OPEN) {
-    socketClient.send(JSON.stringify(payload));
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    throw new Error("Socket not connected. Call connectSocket() first.");
   }
+  socket.send(JSON.stringify(payload));
 }
 
+/**
+ * Optional: close socket manually (if you need)
+ */
 export function closeSocket() {
-  socketClient?.close();
+  if (socket) socket.close();
+  socket = null;
+  connectPromise = null;
+  handlers.clear();
 }

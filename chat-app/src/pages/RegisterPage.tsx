@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { register, relogin } from "../services/authApi.ts";
-import { connectSocket } from "../api/socketClient.ts";
+import { register } from "../services/authApi";
+import { connectSocket, onSocketMessage } from "../api/socketClient";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/LoginPage.css";
 
@@ -11,35 +11,46 @@ const RegisterPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    connectSocket((msg) => {
-      // REGISTER thành công → server yêu cầu RE_LOGIN
-      if (msg.event === "RE_LOGIN" && msg.status === "success") {
-        const code = msg.data?.RE_LOGIN_CODE;
-        localStorage.setItem("RE_LOGIN_CODE", code);
-        relogin(code); 
-      }
+    let unsubscribe: undefined | (() => void);
 
-      // LOGIN_RE thành công
-      if (msg.event === "LOGIN" && msg.status === "success") {
-        localStorage.setItem("user", user);
-        navigate("/chat");
-      }
+    connectSocket().then(() => {
+      unsubscribe = onSocketMessage((msg) => {
+        if (msg?.event === "REGISTER") {
+          setLoading(false);
+
+          if (msg?.status === "success") {
+            alert(msg?.data ?? "Đăng ký thành công");
+            navigate("/login");
+          } else {
+            alert(msg?.data ?? "Đăng ký thất bại");
+          }
+        }
+      });
     });
-  }, [navigate, user]);
 
-  const handleRegister = () => {
+    return () => unsubscribe?.();
+  }, [navigate]);
+
+  const handleRegister = async () => {
     if (!user || !pass) {
       alert("Vui lòng nhập đầy đủ thông tin");
       return;
     }
-    setLoading(true);
-    register(user, pass);
+
+    try {
+      setLoading(true);
+      await connectSocket();
+      register(user, pass);
+    } catch {
+      setLoading(false);
+      alert("Không thể kết nối WebSocket");
+    }
   };
 
   return (
     <div className="login-container">
       <div className="login-card">
-        <h2 className="login-title">Đăng ký NLU Chat App</h2>
+        <h2 className="login-title">Đăng ký</h2>
 
         <div className="login-form">
           <input
@@ -58,11 +69,7 @@ const RegisterPage = () => {
           />
         </div>
 
-        <button
-          className="login-button"
-          onClick={handleRegister}
-          disabled={loading}
-        >
+        <button className="login-button" onClick={handleRegister} disabled={loading}>
           {loading ? "Đang đăng ký..." : "Đăng ký"}
         </button>
 
