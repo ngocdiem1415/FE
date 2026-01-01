@@ -1,70 +1,100 @@
-import React from 'react';
-import './mainChat.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import "./mainChat.css";
+import "@fortawesome/fontawesome-free/css/all.min.css";
+import type { ChatMessage } from "../../types/chatType";
+import { chatService } from "../../services/chatService";
 
-const MainChat: React.FC = () => {
+type ChatMode = "people" | "room";
+
+type Props = {
+  me: string;
+  mode: ChatMode;
+  target: string | null;
+  messages: ChatMessage[];
+};
+
+const MainChat: React.FC<Props> = ({ me, mode, target, messages }) => {
+  const [text, setText] = useState("");
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  const title = useMemo(() => {
+    if (!target) return "";
+    return mode === "people" ? target : `Room: ${target}`;
+  }, [mode, target]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const send = () => {
+    if (!target) return;
+    const m = text.trim();
+    if (!m) return;
+
+    if (mode === "people") chatService.sendToPeople(target, m);
+    else chatService.sendToRoom(target, m);
+
+    setText("");
+  };
+
+  if (!target) {
     return (
-        <div className='mainChat'>
-            {/* --- TRƯỜNG HỢP: CHƯA CHỌN CUỘC TRÒ CHUYỆN --- */}
-            {/* <p className="noConversation">Hãy chọn một cuộc trò chuyện</p> */}
-
-            {/* --- TRƯỜNG HỢP: GIAO DIỆN CHAT CHÍNH --- */}
-            <React.Fragment>
-                {/* Header: Thông tin người nhận */}
-                <div className="topChat">
-                    <div className="user">
-                        <img src="/img/avatar.jpg" alt="avatar" className="avatar" />
-                        <div className="texts">
-                            <span>Tên người dùng</span>
-                            <p>Đang hoạt động</p>
-                        </div>
-                    </div>
-                    <div className="icon">
-                        <i className="fa-solid fa-circle-info fa-xl" style={{ color: '#333333' }}></i>
-                    </div>
-                </div>
-
-                {/* Nội dung tin nhắn (Center) */}
-                <div className="centerChat">
-                    {/* Tin nhắn từ người khác */}
-                    <div className="messages">
-                        <img src="/img/avatar.jpg" alt="avatar" className="avatar" />
-                        <div className="texts">
-                            <p className="content">Chào bạn, hôm nay thế nào?</p>
-                            <span>10:00</span>
-                        </div>
-                    </div>
-
-                    {/* Tin nhắn của chính mình (có class 'own') */}
-                    <div className="messages own">
-                        <div className="texts">
-                            <p className="content">Mình vẫn ổn, cảm ơn bạn!</p>
-                            <span>10:01</span>
-                        </div>
-                    </div>
-
-                    {/* Điểm neo để cuộn xuống tin nhắn mới nhất */}
-                    <div></div>
-                </div>
-
-                {/* Thanh nhập liệu (Bottom) */}
-                <div className="bottomChat">
-                    <input
-                        type="text"
-                        placeholder="Nhập tin nhắn..."
-                    />
-                    <div className="emoji">
-                        <i className="fa-regular fa-face-smile fa-xl"></i>
-                        {/* Khu vực hiển thị Emoji Picker */}
-                        {/* <div className="emojiPicker">
-                            <EmojiPicker />
-                        </div> */}
-                    </div>
-                    <button className="sendButton">Gửi</button>
-                </div>
-            </React.Fragment>
-        </div>
+      <div className="mainChat">
+        <p className="noConversation">Hãy chọn một cuộc trò chuyện</p>
+      </div>
     );
+  }
+
+  return (
+    <div className="mainChat">
+      <React.Fragment>
+        <div className="topChat">
+          <div className="user">
+            <img src="/img/avatar.jpg" alt="avatar" className="avatar" />
+            <div className="texts">
+              <span>{title}</span>
+              <p>Đang hoạt động</p>
+            </div>
+          </div>
+          <div className="icon">
+            <i className="fa-solid fa-circle-info fa-xl" style={{ color: "#333333" }}></i>
+          </div>
+        </div>
+
+        <div className="centerChat">
+          {messages.map((msg) => {
+            const isOwn = msg.name === me;
+            return (
+              <div key={msg.id} className={`messages ${isOwn ? "own" : ""}`}>
+                {!isOwn && <img src="/img/avatar.jpg" alt="avatar" className="avatar" />}
+                <div className="texts">
+                  <p className="content">{msg.mes}</p>
+                  <span>{msg.createAt ?? ""}</span>
+                </div>
+              </div>
+            );
+          })}
+          <div ref={bottomRef}></div>
+        </div>
+
+        <div className="bottomChat">
+          <input
+            type="text"
+            placeholder="Nhập tin nhắn..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+          />
+          <div className="emoji">
+            <i className="fa-regular fa-face-smile fa-xl"></i>
+          </div>
+          <button className="sendButton" onClick={send}>
+            Gửi
+          </button>
+        </div>
+      </React.Fragment>
+    </div>
+  );
 };
 
 export default MainChat;
