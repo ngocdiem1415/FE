@@ -1,33 +1,56 @@
-import { useEffect, useState } from "react";
-import { connectSocket } from "../api/socketClient.ts";
-import { login } from "../services/authApi.ts";
+import { useEffect, useRef, useState } from "react";
+import { connectSocket, onSocketMessage } from "../api/socketClient";
+import { login } from "../services/authApi";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/LoginPage.css";
 
 const LoginPage = () => {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // tránh stale state khi WS trả về
+  const userRef = useRef(user);
   useEffect(() => {
-    connectSocket((msg) => {
-      if (msg.event === "LOGIN") {
-        if (msg.status === "success") {
-          localStorage.setItem("user", user);
-          navigate("/chat");
-        } else {
-          alert("Sai tài khoản hoặc mật khẩu");
-        }
-      }
-    });
-  }, [navigate, user]);
+    userRef.current = user;
+  }, [user]);
 
-  const handleLogin = () => {
+  useEffect(() => {
+    let unsubscribe: undefined | (() => void);
+
+    connectSocket().then(() => {
+      unsubscribe = onSocketMessage((msg) => {
+        if (msg?.event === "LOGIN") {
+          setLoading(false);
+
+          if (msg?.status === "success") {
+            localStorage.setItem("user", userRef.current);
+            navigate("/chat");
+          } else {
+            alert("Sai tài khoản hoặc mật khẩu");
+          }
+        }
+      });
+    });
+
+    return () => unsubscribe?.();
+  }, [navigate]);
+
+  const handleLogin = async () => {
     if (!user || !pass) {
       alert("Vui lòng nhập đủ thông tin");
       return;
     }
-    login(user, pass);
+
+    try {
+      setLoading(true);
+      await connectSocket();
+      login(user, pass);
+    } catch {
+      setLoading(false);
+      alert("Không thể kết nối WebSocket");
+    }
   };
 
   return (
@@ -42,7 +65,6 @@ const LoginPage = () => {
             value={user}
             onChange={(e) => setUser(e.target.value)}
           />
-
           <input
             className="login-input"
             type="password"
@@ -52,8 +74,8 @@ const LoginPage = () => {
           />
         </div>
 
-        <button className="login-button" onClick={handleLogin}>
-          Đăng nhập
+        <button className="login-button" onClick={handleLogin} disabled={loading}>
+          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>
 
         <p className="login-footer">
