@@ -1,17 +1,22 @@
-import './userAvatar.css'
+import React from "react";
+import './userInfor.css';
 
-const UserInfor = () => {
-    const username = localStorage.getItem('username') || 'Guest'
+interface UserInforProps {
+    username?: string;
+    isOnline: boolean;
+}
 
+const UserInfor = ({
+                       username = localStorage.getItem('username'),
+                       isOnline,
+                       isExit
+                   }: UserInforProps) => {
     return (
-        <div className="user-avatar">
+        <div className={`user-avatar ${!isExit ? 'user-not-exit' : ''}`}>
             <div className="avatar-wrapper">
-                <img
-                    src="/react.svg"
-                    alt="avatar"
-                    className="avatar-img"
-                />
-                <span className="status-dot"></span>
+                <img src="/img/avatar.jpg" alt="avatar" className="avatar" />
+                {/* Nếu isOnline là true thì thêm class 'online', ngược lại 'offline' */}
+                <span className={`status-dot ${isOnline ? 'online' : 'offline'}`}></span>
             </div>
 
             <div className="user-text">
@@ -21,4 +26,4 @@ const UserInfor = () => {
     )
 }
 
-export default UserInfor
+export default UserInfor;

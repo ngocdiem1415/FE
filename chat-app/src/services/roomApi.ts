@@ -29,3 +29,31 @@ export const getRoomMessages = (name: string, page = 1) => {
         },
     });
 };
+
+export const checkUserOnline = (name: string) => {
+    sendSocket({
+        action: "onchat",
+        data: {
+            event: "CHECK_USER_ONLINE",
+            data: { name },
+        },
+    });
+};
+export const checkUserExist = (name: string) => {
+    sendSocket({
+        action: "onchat",
+        data: {
+            event: "CHECK_USER_EXIST",
+            data: { name },
+        },
+    });
+};
+
+export const getUserList = () => {
+    sendSocket({
+        action: "onchat",
+        data: {
+            event: "GET_USER_LIST",
+        },
+    });
+};
