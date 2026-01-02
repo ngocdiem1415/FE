@@ -11,9 +11,10 @@ type Props = {
   mode: ChatMode;
   target: string | null;
   messages: ChatMessage[];
+  onSendMessage: (msg: ChatMessage) => void; //Tự cập nhật giao diện ngay khi bấm gửi
 };
 
-const MainChat: React.FC<Props> = ({ me, mode, target, messages }) => {
+const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }) => {
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -31,9 +32,23 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages }) => {
     const m = text.trim();
     if (!m) return;
 
+    //--FLOW--
+    //1. Gửi request lên server
     if (mode === "people") chatService.sendToPeople(target, m);
     else chatService.sendToRoom(target, m);
 
+    //2. Tự tạo tin nhắn để hiển thị ngay lập tức (vì server không phản hồi cho người gửi)
+    const optimisticMsg: ChatMessage = {
+      id: Date.now(), // ID tạm
+      name: me,
+      type: mode === "people" ? 0 : 1,
+      to: target,
+      mes: m,
+      createAt: new Date().toISOString(),
+    };
+
+    //3. Cập nhật UI
+    onSendMessage(optimisticMsg);
     setText("");
   };
 

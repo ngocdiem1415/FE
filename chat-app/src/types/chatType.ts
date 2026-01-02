@@ -32,7 +32,7 @@ export interface ChatRequest<T> {
 export type ChatMessage = {
   id: number;
   name: string;     // sender
-  type: ResChatType;
+  type: ResChatType; //0 or 1
   to: string;
   mes: string;
   createAt?: string;
