@@ -1,33 +1,30 @@
-import { sendSocket } from "../api/socketClient.ts";
+import { sendSocket } from "../api/socketClient";
+import { ACTION_NAME, ChatEvent } from "../constants/chatEvents";
 
-export const createRoom = (name: string) => {
-    sendSocket({
-        action: "onchat",
-        data: {
-            event: "CREATE_ROOM",
-            data: { name },
-        },
-    });
-};
+export const roomService = {
+  createRoom: (name: string) =>
+    sendSocket(
+        { action: ACTION_NAME, data: 
+            { event: ChatEvent.CREATE_ROOM,
+                 data: { name } 
+                } }
+            ),
 
-export const joinRoom = (name: string) => {
-    sendSocket({
-        action: "onchat",
-        data: {
-            event: "JOIN_ROOM",
-            data: { name },
-        },
-    });
-};
+  joinRoom: (name: string) =>
+    sendSocket(
+        { action: ACTION_NAME, data: 
+            { event: ChatEvent.JOIN_ROOM,
+                 data: { name } 
+                } }
+            ),
 
-export const getRoomMessages = (name: string, page = 1) => {
-    sendSocket({
-        action: "onchat",
-        data: {
-            event: "GET_ROOM_CHAT_MES",
-            data: { name , page },
-        },
-    });
+  getRoomMessages: (name: string, page = 1) =>
+    sendSocket(
+        { action: ACTION_NAME, data: 
+            { event: ChatEvent.GET_ROOM_CHAT_MES,
+                 data: { name, page } 
+                } }
+                ),
 };
 
 export const checkUserOnline = (name: string) => {
