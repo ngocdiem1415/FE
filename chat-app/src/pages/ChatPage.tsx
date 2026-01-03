@@ -61,7 +61,7 @@ export default function ChatPage() {
       }
 
       // 2. KÍCH HOẠT HEARTBEAT
-      heartbeatInterval = setInterval(() => {
+      heartbeatInterval = setInterval(async () => {
         const pingPayload = {
           action: ACTION_NAME,
           data: {
@@ -72,13 +72,20 @@ export default function ChatPage() {
 
         // BỌC TRY-CATCH ĐỂ TRÁNH CRASH APP KHI MẤT MẠNG
         try {
-          // Kiểm tra socket trước khi gửi (nếu hàm sendSocket không tự check)
           sendSocket(pingPayload);
           console.log("Sent Heartbeat...");
         } catch (error) {
           console.warn("Heartbeat lỗi: Socket đã mất kết nối. ", error);
-          // Logic tự động kết nối lại nếu heartbeat thất bại
-          connectSocket().catch(e => console.log("Reconnect failed, ", e));
+          try {
+            await connectSocket();
+
+            if (me && savedReLoginCode) {
+              relogin(me, savedReLoginCode);
+              console.log("Đã Re-login sau khi reconnect WS");
+            }
+          } catch (reconnectErr) {
+            console.error("Reconnect thất bại:", reconnectErr);
+          }
         }
       }, 60000);
 
