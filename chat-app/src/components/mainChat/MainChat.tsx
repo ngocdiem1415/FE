@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import EmojiPicker, {type EmojiClickData } from "emoji-picker-react";
 import "./mainChat.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import type { ChatMessage } from "../../types/chatType";
@@ -17,6 +18,7 @@ type Props = {
 
 const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }) => {
   const [text, setText] = useState("");
+  const [openEmoji, setOpenEmoji] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const title = useMemo(() => {
@@ -53,6 +55,11 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
     //3. Cập nhật UI
     onSendMessage(optimisticMsg);
     setText("");
+    setOpenEmoji(false);
+  };
+
+  const showEmoji = (emojiData: EmojiClickData) => {
+    setText((prev) => prev + emojiData.emoji);
   };
 
   if (!target) {
@@ -104,7 +111,16 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
             onKeyDown={(e) => e.key === "Enter" && send()}
           />
           <div className="emoji">
-            <i className="fa-regular fa-face-smile fa-xl"></i>
+            <i
+                className="fa-regular fa-face-smile fa-xl"
+                onClick={() => setOpenEmoji((prev) => !prev)}
+                style={{ cursor: "pointer" }}
+            ></i>
+            {openEmoji && (
+                <div className="emojiPicker">
+                  <EmojiPicker onEmojiClick={showEmoji}/>
+                </div>
+            )}
           </div>
           <button className="sendButton" onClick={send}>
             Gửi
