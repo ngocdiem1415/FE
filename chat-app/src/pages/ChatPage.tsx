@@ -15,6 +15,8 @@ type ChatMode = "people" | "room";
 
 export default function ChatPage() {
   const me = localStorage.getItem("user") || "";
+  const savedReLoginCode = localStorage.getItem("reLoginCode");
+  const navigate = useNavigate();
 
   const [users, setUsers] = useState<UserItem[]>([]);
   const [mode, setMode] = useState<ChatMode>("people");
@@ -44,6 +46,9 @@ export default function ChatPage() {
       try {
         await connectSocket();
         console.log("Socket Connected!");
+        if (me && savedReLoginCode) {
+          console.log("Found re-login code, attempting to login...");
+          relogin(me, savedReLoginCode);
       } catch (err) {
         console.error("Lỗi kết nối ban đầu:", err);
         return;
@@ -69,7 +74,7 @@ export default function ChatPage() {
           // Logic tự động kết nối lại nếu heartbeat thất bại
           connectSocket().catch(e => console.log("Reconnect failed, ", e));
         }
-      }, 30000);
+      }, 60000);
 
       // 3. LẮNG NGHE TIN NHẮN TỪ SERVER
       unsub = onSocketMessage((raw) => {

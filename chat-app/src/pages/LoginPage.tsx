@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { connectSocket, onSocketMessage } from "../api/socketClient";
 import { login } from "../services/authApi";
 import { useNavigate, Link } from "react-router-dom";
+import type {WsResponse} from "../types/commonType";
 import "../styles/LoginPage.css";
 
 const LoginPage = () => {
@@ -20,12 +21,19 @@ const LoginPage = () => {
     let unsubscribe: undefined | (() => void);
 
     connectSocket().then(() => {
-      unsubscribe = onSocketMessage((msg) => {
+      unsubscribe = onSocketMessage((raw) => {
+        const msg = raw as WsResponse<any>;
+
+        console.log("Server response:", msg);
+
         if (msg?.event === "LOGIN") {
           setLoading(false);
 
           if (msg?.status === "success") {
             localStorage.setItem("user", userRef.current);
+            if (msg.data && msg.data.RE_LOGIN_CODE)
+              localStorage.setItem("reLoginCode", msg.data.RE_LOGIN_CODE);
+
             navigate("/chat");
           } else {
             alert("Sai tài khoản hoặc mật khẩu");
