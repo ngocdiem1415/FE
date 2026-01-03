@@ -28,6 +28,7 @@ export default function ChatPage() {
   // Refs để truy cập state mới nhất trong socket callback
   const modeRef = useRef<ChatMode>("people");
   const targetRef = useRef<string | null>(null);
+  const isRedirectingRef = useRef(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -42,6 +43,7 @@ export default function ChatPage() {
   useEffect(() => {
     let unsub: (() => void) | undefined;
     let heartbeatInterval: any = null;
+    isRedirectingRef.current = false;
 
     const initSocket = async () => {
       // 1. Kết nối (Cookie session sẽ tự gửi đi)
@@ -81,7 +83,7 @@ export default function ChatPage() {
 
             if (me && savedReLoginCode) {
               relogin(me, savedReLoginCode);
-              console.log("Đã Re-login sau khi reconnect WS");
+              console.log("Đã gửi Re-login sau khi reconnect WS");
             }
           } catch (reconnectErr) {
             console.error("Reconnect thất bại:", reconnectErr);
@@ -94,10 +96,13 @@ export default function ChatPage() {
         const msg = raw as WsResponse<any>;
 
         if (msg.status === "error") {
-          if (msg.event === ChatEvent.RE_LOGIN) {
-            alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
-            localStorage.clear();
-            navigate("/login");
+          if (!isRedirectingRef.current) {
+            if (msg.event === ChatEvent.RE_LOGIN || msg.mes?.includes("User not Login")) {
+              isRedirectingRef.current = true;
+              alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+              localStorage.clear();
+              navigate("/login");
+            }
           }
           console.error("Socket Error:", msg.mes);
           return;
@@ -120,7 +125,12 @@ export default function ChatPage() {
 
         // --- XỬ LÝ LỊCH SỬ TIN NHẮN ---
         if (msg.event === ChatEvent.GET_PEOPLE_CHAT_MES || msg.event === ChatEvent.GET_ROOM_CHAT_MES) {
-          setMessages(Array.isArray(msg.data) ? msg.data : []);
+          const list = Array.isArray(msg.data) ? msg.data : [];
+          const sortedList = [...list].sort((a, b) => {
+            return new Date(a.createAt || 0).getTime() - new Date(b.createAt || 0).getTime();
+          });
+
+          setMessages(sortedList);
           return;
         }
 

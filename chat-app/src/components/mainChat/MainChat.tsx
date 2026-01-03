@@ -3,6 +3,7 @@ import "./mainChat.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import type { ChatMessage } from "../../types/chatType";
 import { chatService } from "../../services/chatService";
+import { formatToLocalTime } from "../../utils/dateUtil";
 
 type ChatMode = "people" | "room";
 
@@ -38,13 +39,15 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
     else chatService.sendToRoom(target, m);
 
     //2. Tự tạo tin nhắn để hiển thị ngay lập tức (vì server không phản hồi cho người gửi)
+    const nowISO = new Date().toISOString();
+    const serverStyleTime = nowISO.replace("T", " ").split(".")[0];
     const optimisticMsg: ChatMessage = {
       id: Date.now(), // ID tạm
       name: me,
       type: mode === "people" ? 0 : 1,
       to: target,
       mes: m,
-      createAt: new Date().toISOString(),
+      createAt: serverStyleTime,
     };
 
     //3. Cập nhật UI
@@ -84,7 +87,7 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
                 {!isOwn && <img src="/img/avatar.jpg" alt="avatar" className="avatar" />}
                 <div className="texts">
                   <p className="content">{msg.mes}</p>
-                  <span>{msg.createAt ?? ""}</span>
+                  <span>{formatToLocalTime(msg.createAt) ?? ""}</span>
                 </div>
               </div>
             );
