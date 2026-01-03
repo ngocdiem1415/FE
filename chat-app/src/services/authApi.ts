@@ -25,7 +25,7 @@ export const relogin = (code: string) => {
   sendSocket({
     action: ACTION_NAME,
     data: {
-      event: ChatEvent.LOGIN_RE,
+      event: ChatEvent.RE_LOGIN,
       data: {
         RE_LOGIN_CODE: code,
       },

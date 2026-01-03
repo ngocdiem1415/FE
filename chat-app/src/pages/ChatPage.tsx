@@ -4,7 +4,9 @@ import {ACTION_NAME, ChatEvent} from "../constants/chatEvents";
 import { userService } from "../services/userService";
 import { peopleService } from "../services/userService";
 import { roomService } from "../services/roomApi";
-import type { ChatMessage, UserItem, WsResponse } from "../types/chatType";
+import type { ChatMessage } from "../types/chatType";
+import type { UserItem } from "../types/userType";
+import type { WsResponse } from "../types/commonType";
 
 import LeftSideBar from "../components/sidebar/LeftSideBar";
 import MainChat from "../components/mainChat/MainChat";
@@ -39,22 +41,35 @@ export default function ChatPage() {
 
     const initSocket = async () => {
       // 1. Kết nối (Cookie session sẽ tự gửi đi)
-      await connectSocket();
-      console.log("Socket Connected!");
+      try {
+        await connectSocket();
+        console.log("Socket Connected!");
+      } catch (err) {
+        console.error("Lỗi kết nối ban đầu:", err);
+        return;
+      }
 
-      // 2. KÍCH HOẠT HEARTBEAT (Giữ kết nối sống mãi)
+      // 2. KÍCH HOẠT HEARTBEAT
       heartbeatInterval = setInterval(() => {
         const pingPayload = {
           action: ACTION_NAME,
           data: {
-            event: ChatEvent.CHECK_USER_ONLINE, // Hoặc event nào nhẹ nhất
+            event: ChatEvent.CHECK_USER_ONLINE,
             data: { user: me }
           }
         };
-        // Gửi gói tin để server không timeout
-        sendSocket(pingPayload);
-        // console.log("Sent Heartbeat...");
-      }, 50000); // 50 giây gửi 1 lần (An toàn dưới mức 2 phút)
+
+        // BỌC TRY-CATCH ĐỂ TRÁNH CRASH APP KHI MẤT MẠNG
+        try {
+          // Kiểm tra socket trước khi gửi (nếu hàm sendSocket không tự check)
+          sendSocket(pingPayload);
+          // console.log("Sent Heartbeat...");
+        } catch (error) {
+          console.warn("Heartbeat lỗi: Socket đã mất kết nối. ", error);
+          // Logic tự động kết nối lại nếu heartbeat thất bại
+          connectSocket().catch(e => console.log("Reconnect failed, ", e));
+        }
+      }, 30000);
 
       // 3. LẮNG NGHE TIN NHẮN TỪ SERVER
       unsub = onSocketMessage((raw) => {
