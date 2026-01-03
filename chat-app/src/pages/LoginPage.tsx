@@ -23,8 +23,7 @@ const LoginPage = () => {
     connectSocket().then(() => {
       unsubscribe = onSocketMessage((raw) => {
         const msg = raw as WsResponse<any>;
-
-        console.log("Server response:", msg);
+        // console.log("Server response:", msg);
 
         if (msg?.event === "LOGIN") {
           setLoading(false);

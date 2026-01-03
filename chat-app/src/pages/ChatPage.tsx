@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {connectSocket, onSocketMessage, sendSocket} from "../api/socketClient";
 import {ACTION_NAME, ChatEvent} from "../constants/chatEvents";
 import { userService } from "../services/userService";
 import { peopleService } from "../services/userService";
 import { roomService } from "../services/roomApi";
+import { relogin } from "../services/authApi.ts";
 import type { ChatMessage } from "../types/chatType";
 import type { UserItem } from "../types/userType";
 import type { WsResponse } from "../types/commonType";
@@ -49,6 +51,10 @@ export default function ChatPage() {
         if (me && savedReLoginCode) {
           console.log("Found re-login code, attempting to login...");
           relogin(me, savedReLoginCode);
+        } else {
+          console.warn("No credentials found, redirecting to login.");
+          navigate("/login");
+        }
       } catch (err) {
         console.error("Lỗi kết nối ban đầu:", err);
         return;
@@ -68,7 +74,7 @@ export default function ChatPage() {
         try {
           // Kiểm tra socket trước khi gửi (nếu hàm sendSocket không tự check)
           sendSocket(pingPayload);
-          // console.log("Sent Heartbeat...");
+          console.log("Sent Heartbeat...");
         } catch (error) {
           console.warn("Heartbeat lỗi: Socket đã mất kết nối. ", error);
           // Logic tự động kết nối lại nếu heartbeat thất bại
@@ -81,7 +87,21 @@ export default function ChatPage() {
         const msg = raw as WsResponse<any>;
 
         if (msg.status === "error") {
+          if (msg.event === ChatEvent.RE_LOGIN) {
+            alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+            localStorage.clear();
+            navigate("/login");
+          }
           console.error("Socket Error:", msg.mes);
+          return;
+        }
+
+        if (msg.event === ChatEvent.RE_LOGIN && msg.status === "success") {
+          console.log("Re-login success!");
+          if (msg.data?.RE_LOGIN_CODE) {
+            localStorage.setItem("reLoginCode", msg.data.RE_LOGIN_CODE);
+          }
+          userService.getUserList();
           return;
         }
 
