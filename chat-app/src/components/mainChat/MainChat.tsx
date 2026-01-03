@@ -5,7 +5,6 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import type { ChatMessage } from "../../types/chatType";
 import { chatService } from "../../services/chatService";
 import { formatToLocalTime } from "../../utils/dateUtil";
-
 type ChatMode = "people" | "room";
 
 type Props = {
@@ -35,10 +34,11 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
     const m = text.trim();
     if (!m) return;
 
+    const safeMessage = btoa(unescape(encodeURIComponent(m)));
     //--FLOW--
     //1. Gửi request lên server
-    if (mode === "people") chatService.sendToPeople(target, m);
-    else chatService.sendToRoom(target, m);
+    if (mode === "people") chatService.sendToPeople(target, safeMessage);
+    else chatService.sendToRoom(target, safeMessage);
 
     //2. Tự tạo tin nhắn để hiển thị ngay lập tức (vì server không phản hồi cho người gửi)
     const nowISO = new Date().toISOString();
@@ -60,6 +60,15 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
 
   const showEmoji = (emojiData: EmojiClickData) => {
     setText((prev) => prev + emojiData.emoji);
+  };
+
+  const decodeMessage = (str: string) => {
+    try {
+      return decodeURIComponent(escape(atob(str)));
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e) {
+      return str;
+    }
   };
 
   if (!target) {
@@ -93,7 +102,7 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
               <div key={msg.id} className={`messages ${isOwn ? "own" : ""}`}>
                 {!isOwn && <img src="/img/avatar.jpg" alt="avatar" className="avatar" />}
                 <div className="texts">
-                  <p className="content">{msg.mes}</p>
+                  <p className="content">{decodeMessage(msg.mes)}</p>
                   <span>{formatToLocalTime(msg.createAt) ?? ""}</span>
                 </div>
               </div>
