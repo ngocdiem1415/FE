@@ -5,10 +5,10 @@ import {ACTION_NAME, ChatEvent} from "../constants/chatEvents";
 import { userService } from "../services/userService";
 import { peopleService } from "../services/userService";
 import { roomService } from "../services/roomApi";
+import { APP_ROUTES } from "../constants/routes";
 
-import type { ChatMessage, UserItem, ServerResponse } from "../types/chatType";
+import type { ChatMessage} from "../types/chatType";
 import { relogin } from "../services/authApi.ts";
-import type { ChatMessage } from "../types/chatType";
 import type { UserItem } from "../types/userType";
 import type { WsResponse } from "../types/commonType";
 
@@ -57,7 +57,7 @@ export default function ChatPage() {
           relogin(me, savedReLoginCode);
         } else {
           console.warn("No credentials found, redirecting to login.");
-          navigate("/login");
+          navigate(APP_ROUTES.LOGIN);
         }
       } catch (err) {
         console.error("Lỗi kết nối ban đầu:", err);
@@ -95,7 +95,7 @@ export default function ChatPage() {
 
       // 3. LẮNG NGHE TIN NHẮN TỪ SERVER
       unsub = onSocketMessage((raw) => {
-        const msg = raw as ServerResponse<any>;
+        const msg = raw as WsResponse<any>;
 
         if (msg.status === "error") {
           if (!isRedirectingRef.current) {
@@ -103,7 +103,7 @@ export default function ChatPage() {
               isRedirectingRef.current = true;
               alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
               localStorage.clear();
-              navigate("/login");
+              navigate(APP_ROUTES.LOGIN);
             }
           }
           console.error("Socket Error:", msg.mes);

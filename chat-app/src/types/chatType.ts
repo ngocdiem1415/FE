@@ -28,8 +28,8 @@ export interface ServerResponse<T = any> {
     data: T;
 }
 
-export type ReqChatType = "room" | "people";
-export type ResChatType = 0 | 1;
+// export type ReqChatType = "room" | "people";
+// export type ResChatType = 0 | 1;
 
 export interface SendChatData {
     type: ReqChatType;
@@ -37,14 +37,14 @@ export interface SendChatData {
     mes: string;
 }
 
-export type ChatMessage = {
-    id: number;
-    name: string;
-    type: ResChatType;
-    to: string;
-    mes: string;
-    createAt?: string;
-};
+// export type ChatMessage = {
+//     id: number;
+//     name: string;
+//     type: ResChatType;
+//     to: string;
+//     mes: string;
+//     createAt?: string;
+// };
 
 export type UserItem = {
     name: string;
