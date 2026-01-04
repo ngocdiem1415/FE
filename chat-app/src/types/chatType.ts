@@ -1,12 +1,5 @@
 export const ACTION_NAME = "onchat" as const;
 
-// Cấu hình Route cho React Router
-export const APP_ROUTES = {
-    LOGIN: "/login",
-    REGISTER: "/register",
-    CHAT: "/chat",
-} as const;
-
 export type ChatEvent =
     | "REGISTER"
     | "LOGIN"
@@ -24,51 +17,39 @@ export type ChatEvent =
 export interface ChatRequest<T> {
     action: typeof ACTION_NAME;
     data: {
-        event: ChatEvent;
-        data: T;
+        event: ChatEvent | string;
+        data?: T;
     };
 }
 
 export interface ServerResponse<T = any> {
     status: "success" | "error";
     event: ChatEvent | string;
-    data: {
-        status: true | false;
-    }
+    data: T;
 }
 
-
-export type ReqChatType = "room" | "people";   // request gửi lên
-export type ResChatType = 0 | 1;               // response server trả về
+export type ReqChatType = "room" | "people";
+export type ResChatType = 0 | 1;
 
 export interface SendChatData {
-  type: ReqChatType;
-  to: string;
-  mes: string;
+    type: ReqChatType;
+    to: string;
+    mes: string;
 }
 
-export interface ChatRequest<T> {
-  action: typeof ACTION_NAME;
-  data: {
-    event: string;
-    data?: T;
-  };
-}
-
-// message server trả về
 export type ChatMessage = {
-  id: number;
-  name: string;     // sender
-  type: ResChatType;
-  to: string;
-  mes: string;
-  createAt?: string;
+    id: number;
+    name: string;
+    type: ResChatType;
+    to: string;
+    mes: string;
+    createAt?: string;
 };
 
 export type UserItem = {
-  name: string;
-  type: number;
-  actionTime: string;
+    name: string;
+    type: number;
+    actionTime: string;
 };
 
 export interface UserCheckData {
@@ -78,4 +59,9 @@ export interface UserCheckData {
 export interface RoomActionData {
     name: string;
     page?: number;
+}
+
+export interface CheckUserExitResponse {
+    status: boolean;
+    user: string;
 }
