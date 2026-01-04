@@ -4,7 +4,7 @@ import { ChatEvent } from "../constants/chatEvents";
 import { userService } from "../services/userService";
 import { peopleService } from "../services/userService";
 import { roomService } from "../services/roomApi";
-import type { ChatMessage, UserItem, WsResponse } from "../types/chatType";
+import type { ChatMessage, UserItem, ServerResponse } from "../types/chatType";
 
 import LeftSideBar from "../components/sidebar/LeftSideBar";
 import MainChat from "../components/mainChat/MainChat";
@@ -24,11 +24,11 @@ export default function ChatPage() {
 
     connectSocket().then(() => {
       unsub = onSocketMessage((raw) => {
-        const msg = raw as WsResponse<any>;
+        const msg = raw as ServerResponse<any>;
 
         if (msg.status === "error") {
           // backend lỗi sẽ trả mes
-          alert(msg.mes ?? "Có lỗi xảy ra");
+          alert(msg.data.mes ?? "Có lỗi xảy ra");
           return;
         }
 
@@ -92,21 +92,19 @@ export default function ChatPage() {
     setTarget(roomName);
   };
 
-  return (
-    <div style={{ display: "flex", height: "100vh" }}>
-      <LeftSideBar
-        me={me}
-        users={users.filter((u) => u.name !== me)}
-        selectedMode={mode}
-        selectedTarget={target}
-        onRefreshUsers={() => userService.getUserList()}
-        onSelectPeople={onSelectPeople}
-        onSelectRoom={onSelectRoom}
-      />
+    return (
+        <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+            <LeftSideBar
+                me={me}
+                users={users.filter((u) => u.name !== me)}
+                selectedTarget={target}
+                onSelectPeople={onSelectPeople}
+                onSelectRoom={onSelectRoom}
+            />
 
-      <div style={{ flex: 1 }}>
-        <MainChat me={me} mode={mode} target={target} messages={messages} />
-      </div>
-    </div>
-  );
+            <div style={{ flex: 1, position: "relative" }}>
+                <MainChat me={me} mode={mode} target={target} messages={messages} />
+            </div>
+        </div>
+    );
 }
