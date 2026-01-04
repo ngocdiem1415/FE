@@ -1,7 +1,7 @@
 export const ChatEvent = {
   REGISTER: "REGISTER",
   LOGIN: "LOGIN",
-  LOGIN_RE: "LOGIN_RE",
+  RE_LOGIN: "RE_LOGIN",
   LOGOUT: "LOGOUT",
 
   CREATE_ROOM: "CREATE_ROOM",

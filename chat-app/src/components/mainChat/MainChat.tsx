@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import EmojiPicker, {type EmojiClickData } from "emoji-picker-react";
 import "./mainChat.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import type { ChatMessage } from "../../types/chatType";
 import { chatService } from "../../services/chatService";
-
+import { formatToLocalTime } from "../../utils/dateUtil";
 type ChatMode = "people" | "room";
 
 type Props = {
@@ -11,10 +12,12 @@ type Props = {
   mode: ChatMode;
   target: string | null;
   messages: ChatMessage[];
+  onSendMessage: (msg: ChatMessage) => void; //Tự cập nhật giao diện ngay khi bấm gửi
 };
 
-const MainChat: React.FC<Props> = ({ me, mode, target, messages }) => {
+const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }) => {
   const [text, setText] = useState("");
+  const [openEmoji, setOpenEmoji] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const title = useMemo(() => {
@@ -31,10 +34,41 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages }) => {
     const m = text.trim();
     if (!m) return;
 
-    if (mode === "people") chatService.sendToPeople(target, m);
-    else chatService.sendToRoom(target, m);
+    const safeMessage = btoa(unescape(encodeURIComponent(m)));
+    //--FLOW--
+    //1. Gửi request lên server
+    if (mode === "people") chatService.sendToPeople(target, safeMessage);
+    else chatService.sendToRoom(target, safeMessage);
 
+    //2. Tự tạo tin nhắn để hiển thị ngay lập tức (vì server không phản hồi cho người gửi)
+    const nowISO = new Date().toISOString();
+    const serverStyleTime = nowISO.replace("T", " ").split(".")[0];
+    const optimisticMsg: ChatMessage = {
+      id: Date.now(), // ID tạm
+      name: me,
+      type: mode === "people" ? 0 : 1,
+      to: target,
+      mes: m,
+      createAt: serverStyleTime,
+    };
+
+    //3. Cập nhật UI
+    onSendMessage(optimisticMsg);
     setText("");
+    setOpenEmoji(false);
+  };
+
+  const showEmoji = (emojiData: EmojiClickData) => {
+    setText((prev) => prev + emojiData.emoji);
+  };
+
+  const decodeMessage = (str: string) => {
+    try {
+      return decodeURIComponent(escape(atob(str)));
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e) {
+      return str;
+    }
   };
 
   if (!target) {
@@ -68,8 +102,8 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages }) => {
               <div key={msg.id} className={`messages ${isOwn ? "own" : ""}`}>
                 {!isOwn && <img src="/img/avatar.jpg" alt="avatar" className="avatar" />}
                 <div className="texts">
-                  <p className="content">{msg.mes}</p>
-                  <span>{msg.createAt ?? ""}</span>
+                  <p className="content">{decodeMessage(msg.mes)}</p>
+                  <span>{formatToLocalTime(msg.createAt) ?? ""}</span>
                 </div>
               </div>
             );
@@ -86,7 +120,16 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages }) => {
             onKeyDown={(e) => e.key === "Enter" && send()}
           />
           <div className="emoji">
-            <i className="fa-regular fa-face-smile fa-xl"></i>
+            <i
+                className="fa-regular fa-face-smile fa-xl"
+                onClick={() => setOpenEmoji((prev) => !prev)}
+                style={{ cursor: "pointer" }}
+            ></i>
+            {openEmoji && (
+                <div className="emojiPicker">
+                  <EmojiPicker onEmojiClick={showEmoji}/>
+                </div>
+            )}
           </div>
           <button className="sendButton" onClick={send}>
             Gửi

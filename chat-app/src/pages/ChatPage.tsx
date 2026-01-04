@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
-import { connectSocket, onSocketMessage } from "../api/socketClient";
-import { ChatEvent } from "../constants/chatEvents";
+import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {connectSocket, onSocketMessage, sendSocket} from "../api/socketClient";
+import {ACTION_NAME, ChatEvent} from "../constants/chatEvents";
 import { userService } from "../services/userService";
 import { peopleService } from "../services/userService";
 import { roomService } from "../services/roomApi";
+
 import type { ChatMessage, UserItem, ServerResponse } from "../types/chatType";
+import { relogin } from "../services/authApi.ts";
+import type { ChatMessage } from "../types/chatType";
+import type { UserItem } from "../types/userType";
+import type { WsResponse } from "../types/commonType";
 
 import LeftSideBar from "../components/sidebar/LeftSideBar";
 import MainChat from "../components/mainChat/MainChat";
@@ -13,65 +19,170 @@ type ChatMode = "people" | "room";
 
 export default function ChatPage() {
   const me = localStorage.getItem("user") || "";
+  const savedReLoginCode = localStorage.getItem("reLoginCode");
+  const navigate = useNavigate();
 
   const [users, setUsers] = useState<UserItem[]>([]);
   const [mode, setMode] = useState<ChatMode>("people");
   const [target, setTarget] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  useEffect(() => {
-    let unsub: undefined | (() => void);
+  // Refs để truy cập state mới nhất trong socket callback
+  const modeRef = useRef<ChatMode>("people");
+  const targetRef = useRef<string | null>(null);
+  const isRedirectingRef = useRef(false);
 
-    connectSocket().then(() => {
+  useEffect(() => {
+    modeRef.current = mode;
+    targetRef.current = target;
+  }, [mode, target]);
+
+  //Nhận tin nhắn từ MainChat (do chính mình gửi)
+  const handleManualAddMessage = (msg: ChatMessage) => {
+    setMessages((prev) => [...prev, msg]);
+  };
+
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    let heartbeatInterval: any = null;
+    isRedirectingRef.current = false;
+
+    const initSocket = async () => {
+      // 1. Kết nối (Cookie session sẽ tự gửi đi)
+      try {
+        await connectSocket();
+        console.log("Socket Connected!");
+        if (me && savedReLoginCode) {
+          console.log("Found re-login code, attempting to login...");
+          relogin(me, savedReLoginCode);
+        } else {
+          console.warn("No credentials found, redirecting to login.");
+          navigate("/login");
+        }
+      } catch (err) {
+        console.error("Lỗi kết nối ban đầu:", err);
+        return;
+      }
+
+      // 2. KÍCH HOẠT HEARTBEAT
+      heartbeatInterval = setInterval(async () => {
+        const pingPayload = {
+          action: ACTION_NAME,
+          data: {
+            event: ChatEvent.CHECK_USER_ONLINE,
+            data: { user: me }
+          }
+        };
+
+        // BỌC TRY-CATCH ĐỂ TRÁNH CRASH APP KHI MẤT MẠNG
+        try {
+          sendSocket(pingPayload);
+          console.log("Sent Heartbeat...");
+        } catch (error) {
+          console.warn("Heartbeat lỗi: Socket đã mất kết nối. ", error);
+          try {
+            await connectSocket();
+
+            if (me && savedReLoginCode) {
+              relogin(me, savedReLoginCode);
+              console.log("Đã gửi Re-login sau khi reconnect WS");
+            }
+          } catch (reconnectErr) {
+            console.error("Reconnect thất bại:", reconnectErr);
+          }
+        }
+      }, 60000);
+
+      // 3. LẮNG NGHE TIN NHẮN TỪ SERVER
       unsub = onSocketMessage((raw) => {
         const msg = raw as ServerResponse<any>;
 
         if (msg.status === "error") {
-          // backend lỗi sẽ trả mes
-          alert(msg.data.mes ?? "Có lỗi xảy ra");
+          if (!isRedirectingRef.current) {
+            if (msg.event === ChatEvent.RE_LOGIN || msg.mes?.includes("User not Login")) {
+              isRedirectingRef.current = true;
+              alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+              localStorage.clear();
+              navigate("/login");
+            }
+          }
+          console.error("Socket Error:", msg.mes);
           return;
         }
 
+        if (msg.event === ChatEvent.RE_LOGIN && msg.status === "success") {
+          console.log("Re-login success!");
+          if (msg.data?.RE_LOGIN_CODE) {
+            localStorage.setItem("reLoginCode", msg.data.RE_LOGIN_CODE);
+          }
+          userService.getUserList();
+          return;
+        }
+
+        // --- XỬ LÝ DANH SÁCH USER ---
         if (msg.event === ChatEvent.GET_USER_LIST) {
           setUsers(Array.isArray(msg.data) ? msg.data : []);
           return;
         }
 
+        // --- XỬ LÝ LỊCH SỬ TIN NHẮN ---
         if (msg.event === ChatEvent.GET_PEOPLE_CHAT_MES || msg.event === ChatEvent.GET_ROOM_CHAT_MES) {
-          setMessages(Array.isArray(msg.data) ? msg.data : []);
+          const list = Array.isArray(msg.data) ? msg.data : [];
+          const sortedList = [...list].sort((a, b) => {
+            return new Date(a.createAt || 0).getTime() - new Date(b.createAt || 0).getTime();
+          });
+
+          setMessages(sortedList);
           return;
         }
 
+        // --- XỬ LÝ TIN NHẮN REALTIME (Người khác gửi đến) ---
         if (msg.event === ChatEvent.SEND_CHAT) {
           const m = msg.data as ChatMessage | undefined;
-          if (!m || !target) return;
 
-          // append nếu đúng cuộc chat đang mở
-          if (mode === "people") {
-            // target là username
-            if (m.to === target || m.name === target || m.to === me) {
+          // Lấy giá trị hiện tại từ Ref
+          const currentTarget = targetRef.current;
+          const currentMode = modeRef.current;
+
+          if (!m || !currentTarget) return;
+
+          // Logic kiểm tra xem tin nhắn đến có thuộc cuộc trò chuyện đang mở không
+
+          // Case 1: Chat 1-1 (People) - Server trả về type: 0
+          if (currentMode === "people" && m.type === 0) {
+            // Chỉ hiện nếu người gửi (m.name) chính là người mình đang chat (target)
+            if (m.name === currentTarget) {
               setMessages((prev) => [...prev, m]);
             }
-          } else {
-            // room: target là roomName
-            if (m.to === target) setMessages((prev) => [...prev, m]);
+          }
+
+          // Case 2: Chat Room - Server trả về type: 1
+          else if (currentMode === "room" && m.type === 1) {
+            // Với room, tin nhắn phải có 'to' trùng với tên phòng
+            if (m.to === currentTarget) {
+              setMessages((prev) => [...prev, m]);
+            }
           }
         }
       });
 
-      // load danh sách users lúc vào chat
+      // Load danh sách user sau khi connect xong
       userService.getUserList();
-    });
+    };
 
-    return () => unsub?.();
-  }, [mode, target, me]);
+    initSocket();
 
+    // Cleanup khi thoát trang
+    return () => {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      if (unsub) unsub();
+    };
+  }, []);
+
+  // ----CHƯA TEST LẤY LỊCH SỬ CHAT-----
   // chọn chat -> load lịch sử
   useEffect(() => {
-    if (!target) {
-      setMessages([]);
-      return;
-    }
+    if (!target) return;
 
     if (mode === "people") {
       peopleService.getPeopleMessages(target, 1);
@@ -83,11 +194,13 @@ export default function ChatPage() {
   }, [mode, target]);
 
   const onSelectPeople = (username: string) => {
+    setMessages([]);
     setMode("people");
     setTarget(username);
   };
 
   const onSelectRoom = (roomName: string) => {
+    setMessages([]);
     setMode("room");
     setTarget(roomName);
   };
@@ -103,7 +216,11 @@ export default function ChatPage() {
             />
 
             <div style={{ flex: 1, position: "relative" }}>
-                <MainChat me={me} mode={mode} target={target} messages={messages} />
+                <MainChat me={me} 
+                          mode={mode} 
+                          target={target} 
+                          messages={messages}
+                          onSendMessage={handleManualAddMessage}/>
             </div>
         </div>
     );
