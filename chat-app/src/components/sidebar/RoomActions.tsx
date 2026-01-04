@@ -12,13 +12,7 @@ export default function RoomActions({ onSelectRoom }: Props) {
     const name = room.trim();
     if (!name) return;
     roomService.createRoom(name);
-  };
-
-  const join = () => {
-    const name = room.trim();
-    if (!name) return;
-    roomService.joinRoom(name);
-    onSelectRoom(name);
+    setRoom("");
   };
 
   return (
@@ -30,14 +24,17 @@ export default function RoomActions({ onSelectRoom }: Props) {
         placeholder="room name..."
         style={{ width: "100%", padding: 10, boxSizing: "border-box" }}
       />
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        <button style={{ flex: 1 }} onClick={create}>
-          Create
-        </button>
-        <button style={{ flex: 1 }} onClick={join}>
-          Join
-        </button>
-      </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+            <button
+                style={{
+                    padding: "8px 24px",
+                    cursor: "pointer",
+                    minWidth: "100px"
+                }}
+                onClick={create}>
+                Create
+            </button>
+        </div>
     </div>
   );
 }
