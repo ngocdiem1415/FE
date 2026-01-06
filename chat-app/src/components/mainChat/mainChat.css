@@ -88,6 +88,7 @@
     display: flex;
     justify-content: flex-start; /* người khác: lề trái */
     margin-bottom: 10px;
+    margin-top: 0; !important;
 }
 
 .messages.own {
@@ -116,6 +117,15 @@
 }
 
 /*Tin nhắn của đối phương*/
+.messages .texts .sender-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 2px;
+    display: block;
+    text-align: left;
+}
+
 .mainChat .centerChat .messages .texts p{
     background-color: #dcd8f8;
     /*margin: auto;*/
@@ -124,6 +134,13 @@
     padding: 18px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     align-self: flex-start;
+    margin-top: 0;
+
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-wrap;
 }
 .mainChat .centerChat .messages .texts span {
     font-size: 13px;
@@ -223,6 +240,6 @@
 
 .noConversation{
     display: flex;
-    justify-content: center; /* căn giữa theo chiều ngang */
+    justify-content: center;
     align-items: center;
 }

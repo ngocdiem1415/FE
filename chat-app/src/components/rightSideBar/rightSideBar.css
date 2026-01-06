@@ -1,112 +1,139 @@
-.rightSideBar{
-    flex: 1;
+.rightSideBar {
+    width: 300px; /* Cố định chiều rộng */
+    background-color: white;
+    border-left: 1px solid #e0e0e0;
+    height: 100vh;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    color: white;
+    font-family: Arial, sans-serif;
+    color: #333;
 }
-.rightSideBar .user{
-    padding: 30px 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    border-bottom: 1px solid #655d72 ;
-}
-.rightSideBar .user img{
-    width: 75px;
-    height: 75px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-.rightSideBar .user h2{
-    margin: auto;
-}
-.rightSideBar .user p{
-    margin: auto;
-}
-.rightSideBar .info{
+
+/* Header Info */
+.rsb-header {
     padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    overflow: auto;
-}
-.rightSideBar .info::-webkit-scrollbar {
-    width: 10px;
+    align-items: center;
+    border-bottom: 8px solid #f0f2f5; /* Separator dày */
 }
 
-.rightSideBar .info::-webkit-scrollbar-thumb {
-    background-color: rgba(17, 25, 40, 0.5);
-    border-radius: 5px;
-}
-
-.rightSideBar .info::-webkit-scrollbar-track {
-    background-color: rgba(0, 0, 0, 0.1);
-}
-.rightSideBar .info .option .title{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.rightSideBar .info .option .title img{
-    width: 10px;
-    height: 10px;
-    background-color: rgba(17, 25, 40, 0.3);
-    padding: 10px;
-    border-radius: 50%;
-    cursor: pointer;
-}
-.rightSideBar .info .option .photos{
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-top: 15px;
-}
-.rightSideBar .info .option .photos .photoItem{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.rightSideBar .info .option .photos .photoItem .photoDetail{
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-.rightSideBar .info .option .photos .photoItem .photoDetail img{
-    width: 40px;
-    height: 40px;
-    border-radius: 5px;
-}
-.rightSideBar .info .option .photos .photoItem .photoDetail span{
-    font-size: 14px;
-    color: #bbb8b8;
-    font-weight: 200;
-}
-.rightSideBar .info .option .photos .photoItem .downloadIcon{
-    width: 10px;
-    height: 10px;
-    background-color: rgba(17, 25, 40, 0.3);
+.rsb-avatar {
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     object-fit: cover;
-    padding: 10px;
-    cursor: pointer;
+    margin-bottom: 10px;
+    margin-top: 10px;
+    border: 1px solid #ddd;
 }
-.rightSideBar .info button{
-    padding: 15px;
-    background-color: rgba(197, 80, 3, 0.57);
-    color: white;
-    border-radius: 5px;
-    cursor: pointer;
-    border: none;
-}
-.rightSideBar .info button:hover{
-    background-color: rgba(197, 80, 3, 0.77);
-}
-.rightSideBar .info .logOutBtn{
-    /*padding: 10px;*/
-    background-color: rgba(65, 208, 208, 0.6);
-}
-.rightSideBar .info .logOutBtn:hover{
-    background-color: rgba(65, 208, 208, 0.89);
 
+.rsb-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    text-align: center;
+}
+
+/* Accordion Section */
+.rsb-section {
+    border-bottom: 8px solid #f0f2f5;
+}
+
+.rsb-section-title {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+.rsb-section-title:hover {
+    background-color: #fafafa;
+}
+
+.rsb-section-content {
+    padding: 0 15px 15px 15px;
+}
+
+/* Member List */
+.rsb-member-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+}
+.rsb-member-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+.rsb-member-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.rsb-member-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+.rsb-role-admin {
+    font-size: 11px;
+    color: #e67e22; /* Màu cam cho nhóm trưởng */
+    font-weight: bold;
+}
+
+/* Media Grid */
+.rsb-media-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+}
+.rsb-media-img {
+    width: 100%;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #eee;
+}
+
+/* File List */
+.rsb-file-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+.rsb-file-item:last-child {
+    border-bottom: none;
+}
+.rsb-file-icon {
+    width: 32px;
+    height: 32px;
+    background-color: #f0f2f5;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    color: #555;
+}
+.rsb-file-name {
+    font-size: 13px;
+    word-break: break-all;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.rsb-empty-text {
+    font-size: 13px;
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    padding: 10px;
 }

@@ -12,7 +12,7 @@ type Props = {
   mode: ChatMode;
   target: string | null;
   messages: ChatMessage[];
-  onSendMessage: (msg: ChatMessage) => void; //Tự cập nhật giao diện ngay khi bấm gửi
+  onSendMessage: (msg: ChatMessage) => void;
 };
 
 const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }) => {
@@ -84,7 +84,11 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
       <React.Fragment>
         <div className="topChat">
           <div className="user">
-            <img src="/img/avatar.jpg" alt="avatar" className="avatar" />
+            <img
+                src={mode === "room" ? "/img/avt_group.jpg" : "/img/anotherAvatar.jpg"}
+                alt="Avatar"
+                className="rsb-avatar"
+            />
             <div className="texts">
               <span>{title}</span>
               <p>Đang hoạt động</p>
@@ -100,8 +104,9 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
             const isOwn = msg.name === me;
             return (
               <div key={msg.id} className={`messages ${isOwn ? "own" : ""}`}>
-                {!isOwn && <img src="/img/avatar.jpg" alt="avatar" className="avatar" />}
+                {!isOwn && <img src="/img/anotherAvatar.jpg" alt="avatar" className="avatar" />}
                 <div className="texts">
+                  {!isOwn && <span className="sender-name">{msg.name}</span>}
                   <p className="content">{decodeMessage(msg.mes)}</p>
                   <span>{formatToLocalTime(msg.createAt) ?? ""}</span>
                 </div>

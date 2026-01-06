@@ -19,7 +19,7 @@ import RightSideBar from "../components/rightSideBar/RightSideBar.tsx";
 
 type ChatMode = "people" | "room";
 
-export default function ChatPage() {
+export function ChatPage() {
   const me = localStorage.getItem("user") || "";
   const savedReLoginCode = localStorage.getItem("reLoginCode");
   const navigate = useNavigate();
@@ -28,6 +28,7 @@ export default function ChatPage() {
   const [mode, setMode] = useState<ChatMode>("people");
   const [target, setTarget] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [currentRoomData, setCurrentRoomData] = useState<RoomData | null>(null);
 
   // Refs để truy cập state mới nhất trong socket callback
   const modeRef = useRef<ChatMode>("people");
@@ -138,6 +139,7 @@ export default function ChatPage() {
 
           const roomData = msg.data as RoomData;
 
+          setCurrentRoomData(roomData);
           // Chỉ cập nhật nếu đúng là phòng đang mở (đề phòng mạng lag trả về phòng cũ)
           // if (roomData.name === targetRef.current) { // Optional: check kỹ hơn
           // console.log("Joined Room & Loaded Messages:", roomData.name);
@@ -221,24 +223,31 @@ export default function ChatPage() {
     setTarget(roomName);
   };
 
-    return (
-        <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-            <LeftSideBar
-                me={me}
-                users={users.filter((u) => u.name !== me)}
-                selectedTarget={target}
-                onSelectPeople={onSelectPeople}
-                onSelectRoom={onSelectRoom}
-            />
+  return (
+      <div style={{display: "flex", height: "100vh", overflow: "hidden"}}>
+        <LeftSideBar
+            me={me}
+            users={users.filter((u) => u.name !== me)}
+            selectedTarget={target}
+            onSelectPeople={onSelectPeople}
+            onSelectRoom={onSelectRoom}
+        />
 
-            <div style={{ flex: 1, position: "relative" }}>
-                <MainChat me={me} 
-                          mode={mode} 
-                          target={target} 
-                          messages={messages}
-                          onSendMessage={handleManualAddMessage}/>
-            </div>
-          <RightSideBar/>
+        <div style={{flex: 1, position: "relative"}}>
+          <MainChat me={me}
+                    mode={mode}
+                    target={target}
+                    messages={messages}
+                    onSendMessage={handleManualAddMessage}/>
         </div>
-    );
+        {target && (
+            <RightSideBar
+                mode={mode}
+                target={target}
+                roomData={currentRoomData} // Truyền data phòng
+                messages={messages}        // Truyền tin nhắn để lọc ảnh/file
+            />
+        )}
+      </div>
+  );
 }
