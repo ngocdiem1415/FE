@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import RegisterPage from "./pages/RegisterPage";
 import LoginPage from "./pages/LoginPage";
-import {ChatPage} from "./pages/ChatPage";
+import ChatPage from "./pages/ChatPage";
 
 const App = () => {
   const user = localStorage.getItem("user");

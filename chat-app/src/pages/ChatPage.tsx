@@ -19,7 +19,7 @@ import RightSideBar from "../components/rightSideBar/RightSideBar.tsx";
 
 type ChatMode = "people" | "room";
 
-export function ChatPage() {
+function ChatPage() {
   const me = localStorage.getItem("user") || "";
   const savedReLoginCode = localStorage.getItem("reLoginCode");
   const navigate = useNavigate();
@@ -29,6 +29,7 @@ export function ChatPage() {
   const [target, setTarget] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentRoomData, setCurrentRoomData] = useState<RoomData | null>(null);
+  const [isTargetOnline, setIsTargetOnline] = useState(false);
 
   // Refs để truy cập state mới nhất trong socket callback
   const modeRef = useRef<ChatMode>("people");
@@ -72,7 +73,14 @@ export function ChatPage() {
 
         // BỌC TRY-CATCH ĐỂ TRÁNH CRASH APP KHI MẤT MẠNG
         try {
-          userService.checkUserOnline(me);
+          const currentMode = modeRef.current;
+          const currentTarget = targetRef.current;
+          if (currentMode === "people" && currentTarget) {
+            userService.checkUserOnline(currentTarget);
+          }
+          else {
+            userService.checkUserOnline(me);
+          }
           console.log("Sent Heartbeat...");
         } catch (error) {
           console.warn("Heartbeat lỗi: Socket đã mất kết nối. ", error);
@@ -115,6 +123,14 @@ export function ChatPage() {
           return;
         }
 
+        if (msg.event === ChatEvent.CHECK_USER_ONLINE && msg.status === "success") {
+          const isOnline = msg.data?.status === true;
+          if (modeRef.current === "people") {
+            setIsTargetOnline(isOnline);
+          }
+          return;
+        }
+
         // --- XỬ LÝ DANH SÁCH USER ---
         if (msg.event === ChatEvent.GET_USER_LIST) {
           setUsers(Array.isArray(msg.data) ? msg.data : []);
@@ -140,9 +156,6 @@ export function ChatPage() {
           const roomData = msg.data as RoomData;
 
           setCurrentRoomData(roomData);
-          // Chỉ cập nhật nếu đúng là phòng đang mở (đề phòng mạng lag trả về phòng cũ)
-          // if (roomData.name === targetRef.current) { // Optional: check kỹ hơn
-          // console.log("Joined Room & Loaded Messages:", roomData.name);
 
           const list = roomData.chatData || [];
           const sortedList = [...list].sort((a, b) => {
@@ -201,9 +214,9 @@ export function ChatPage() {
   // chọn chat -> load lịch sử
   useEffect(() => {
     if (!target) return;
-
     if (mode === "people") {
       peopleService.getPeopleMessages(target, 1);
+      userService.checkUserOnline(target);
     } else {
       // room cần join trước để tránh lỗi
       roomService.joinRoom(target);
@@ -213,12 +226,16 @@ export function ChatPage() {
 
   const onSelectPeople = (username: string) => {
     setMessages([]);
+    setCurrentRoomData(null);
+    setIsTargetOnline(false);
     setMode("people");
     setTarget(username);
   };
 
   const onSelectRoom = (roomName: string) => {
     setMessages([]);
+    setCurrentRoomData(null);
+    setIsTargetOnline(false);
     setMode("room");
     setTarget(roomName);
   };
@@ -238,16 +255,19 @@ export function ChatPage() {
                     mode={mode}
                     target={target}
                     messages={messages}
-                    onSendMessage={handleManualAddMessage}/>
+                    onSendMessage={handleManualAddMessage}
+                    isOnline={isTargetOnline}/>
         </div>
         {target && (
             <RightSideBar
                 mode={mode}
                 target={target}
-                roomData={currentRoomData} // Truyền data phòng
-                messages={messages}        // Truyền tin nhắn để lọc ảnh/file
+                roomData={currentRoomData}
+                messages={messages}
             />
         )}
       </div>
   );
 }
+
+export default ChatPage

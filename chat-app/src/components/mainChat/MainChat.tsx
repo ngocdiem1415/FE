@@ -13,9 +13,10 @@ type Props = {
   target: string | null;
   messages: ChatMessage[];
   onSendMessage: (msg: ChatMessage) => void;
+  isOnline: boolean;
 };
 
-const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }) => {
+const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, isOnline }) => {
   const [text, setText] = useState("");
   const [openEmoji, setOpenEmoji] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -24,6 +25,25 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
     if (!target) return "";
     return mode === "people" ? target : `Room: ${target}`;
   }, [mode, target]);
+
+  const renderStatus = () => {
+    // CASE 1: NẾU LÀ ROOM -> Hiển thị text tĩnh
+    if (mode === "room") {
+      return <p style={{ color: "#666", fontWeight: "400" }}></p>;
+    }
+
+    // CASE 2: NẾU LÀ PEOPLE -> Hiển thị trạng thái Online/Offline dựa vào props
+    return (
+        <p style={{ color: isOnline ? "#4caf50" : "#999", fontWeight: isOnline ? "600" : "400" }}>
+          {isOnline ? (
+              <>
+                <i className="fa-solid fa-circle" style={{fontSize: 8, marginRight: 5}}></i>
+                Đang hoạt động
+              </>
+          ) : "Ngoại tuyến"}
+        </p>
+    );
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -91,7 +111,7 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
             />
             <div className="texts">
               <span>{title}</span>
-              <p>Đang hoạt động</p>
+              {renderStatus()}
             </div>
           </div>
           <div className="icon">
