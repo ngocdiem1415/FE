@@ -20,19 +20,22 @@ const UPLOAD_PRESET = (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string) 
  * Use endpoint: /auto/upload => Cloudinary auto-detect resource type.
  */
 export async function uploadToCloudinary(file: File): Promise<CloudinaryUploadResult> {
-  console.log("CLOUD_NAME", CLOUD_NAME);
-  console.log("UPLOAD_PRESET", UPLOAD_PRESET);
-
   if (!CLOUD_NAME || !UPLOAD_PRESET) {
     throw new Error("Missing env: VITE_CLOUDINARY_CLOUD_NAME or VITE_CLOUDINARY_UPLOAD_PRESET");
   }
+
+  const isVideo = file.type.startsWith("video/");
+  const isImage = file.type.startsWith("image/");
+  const resourceType: "image" | "video" | "raw" = isVideo ? "video" : isImage ? "image" : "raw";
+
 
   const form = new FormData();
   form.append("file", file);
   form.append("upload_preset", UPLOAD_PRESET.trim());
   form.append("folder", "chat_uploads");
 
-  const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME.trim()}/auto/upload`;
+  // const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME.trim()}/auto/upload`;
+  const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME.trim()}/${resourceType}/upload`;
 
   const res = await fetch(url, { method: "POST", body: form });
 
@@ -43,8 +46,6 @@ export async function uploadToCloudinary(file: File): Promise<CloudinaryUploadRe
     data = null;
   }
 
-  console.log("Cloudinary status:", res.status);
-  console.log("Cloudinary response:", data);
 
   if (!res.ok) {
     throw new Error(data?.error?.message || `Upload failed (${res.status})`);
