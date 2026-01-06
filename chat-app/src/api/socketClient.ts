@@ -17,6 +17,9 @@ let reconnectAttempts = 0;
 const RECONNECT_BASE_DELAY = 500; // ms
 const RECONNECT_MAX_DELAY = 8000; // ms
 
+// để closeSocket() không bị auto-reconnect
+let manualClose = false;
+
 function isOpen(ws: WebSocket | null) {
   return ws && ws.readyState === WebSocket.OPEN;
 }
@@ -72,9 +75,11 @@ export function connectSocket(): Promise<void> {
   if (isOpen(socket)) return Promise.resolve();
   if (connectPromise) return connectPromise;
 
+  // reset manualClose vì đây là connect mới
+  manualClose = false;
+
   connectPromise = new Promise<void>((resolve, reject) => {
     socket = new WebSocket(WS_URL);
-
     socket.onopen = () => {
       console.log("WS connected");
       reconnectAttempts = 0; // reset backoff
@@ -98,6 +103,8 @@ export function connectSocket(): Promise<void> {
     socket.onerror = () => {
       console.error("WS error");
       // reject connectPromise để lần sau gọi connectSocket() được reconnect
+      connectPromise = null;
+      socket = null;
       reject(new Error("WebSocket error"));
     };
 
@@ -106,16 +113,19 @@ export function connectSocket(): Promise<void> {
       connectPromise = null;
       socket = null;
 
-      // tự reconnect
-      scheduleReconnect();
+      //chỉ reconnect nếu không phải đóng thủ công
+      if (!manualClose) scheduleReconnect();
+
+       // reset flag
+      manualClose = false;
     };
   }).catch((err) => {
-    // allow reconnect next time
     connectPromise = null;
     socket = null;
 
-    // schedule reconnect khi connect fail
-    scheduleReconnect();
+    if (!manualClose) scheduleReconnect();
+    manualClose = false;
+
     throw err;
   });
 
@@ -141,7 +151,7 @@ export function sendSocket(payload: any) {
 }
 
 /**
- * ✅ Send an toàn:
+ * Send an toàn:
  * - Nếu WS đang OPEN -> send ngay
  * - Nếu WS chưa OPEN -> đưa vào queue + tự connect
  * => KHÔNG throw, không crash app
@@ -169,14 +179,18 @@ export async function sendSocketSafe(payload: any) {
  * Optional: close socket manually (if you need)
  */
 export function closeSocket() {
+  manualClose = true;
   clearReconnectTimer();
   reconnectAttempts = 0;
 
-  if (socket) socket.close();
+  try {
+    if (socket) socket.close();
+  } catch {
+    // ignore
+  }
+
   socket = null;
   connectPromise = null;
   handlers.clear();
-
-  // nếu bạn muốn: xóa queue luôn
   sendQueue.length = 0;
 }
