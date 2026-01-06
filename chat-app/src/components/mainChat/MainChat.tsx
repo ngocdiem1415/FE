@@ -1,10 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import EmojiPicker, {type EmojiClickData } from "emoji-picker-react";
+import EmojiPicker, { type EmojiClickData } from "emoji-picker-react";
 import "./mainChat.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
+
 import type { ChatMessage } from "../../types/chatType";
 import { chatService } from "../../services/chatService";
 import { formatToLocalTime } from "../../utils/dateUtil";
+
+import { uploadToCloudinary } from "../../services/cloudinaryUpload";
+import { decodeMes, encodeMes } from "../../utils/messageCodec";
+
 type ChatMode = "people" | "room";
 
 type Props = {
@@ -12,13 +17,28 @@ type Props = {
   mode: ChatMode;
   target: string | null;
   messages: ChatMessage[];
-  onSendMessage: (msg: ChatMessage) => void; //Tự cập nhật giao diện ngay khi bấm gửi
+  onSendMessage: (msg: ChatMessage) => void;
 };
+
+function formatBytes(bytes?: number) {
+  if (!bytes && bytes !== 0) return "";
+  const units = ["B", "KB", "MB", "GB"];
+  let v = bytes;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
 
 const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }) => {
   const [text, setText] = useState("");
   const [openEmoji, setOpenEmoji] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const title = useMemo(() => {
     if (!target) return "";
@@ -29,45 +49,102 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const send = () => {
-    if (!target) return;
-    const m = text.trim();
-    if (!m) return;
-
-    const safeMessage = btoa(unescape(encodeURIComponent(m)));
-    //--FLOW--
-    //1. Gửi request lên server
-    if (mode === "people") chatService.sendToPeople(target, safeMessage);
-    else chatService.sendToRoom(target, safeMessage);
-
-    //2. Tự tạo tin nhắn để hiển thị ngay lập tức (vì server không phản hồi cho người gửi)
-    const nowISO = new Date().toISOString();
-    const serverStyleTime = nowISO.replace("T", " ").split(".")[0];
-    const optimisticMsg: ChatMessage = {
-      id: Date.now(), // ID tạm
-      name: me,
-      type: mode === "people" ? 0 : 1,
-      to: target,
-      mes: m,
-      createAt: serverStyleTime,
-    };
-
-    //3. Cập nhật UI
-    onSendMessage(optimisticMsg);
-    setText("");
-    setOpenEmoji(false);
-  };
-
   const showEmoji = (emojiData: EmojiClickData) => {
     setText((prev) => prev + emojiData.emoji);
   };
 
-  const decodeMessage = (str: string) => {
+  const sendText = async () => {
+    if (!target) return;
+
+    const m = text.trim();
+    if (!m) return;
+
+    const encoded = encodeMes({ kind: "text", text: m });
+
+    if (mode === "people") await chatService.sendToPeople(target, encoded);
+    else await chatService.sendToRoom(target, encoded);
+
+    const nowISO = new Date().toISOString();
+    const serverStyleTime = nowISO.replace("T", " ").split(".")[0];
+
+    onSendMessage({
+      id: Date.now(),
+      name: me,
+      type: mode === "people" ? 0 : 1,
+      to: target,
+      mes: encoded,
+      createAt: serverStyleTime,
+    });
+
+    setText("");
+    setOpenEmoji(false);
+  };
+
+  const sendAnyFile = async (file: File) => {
+    if (!target) return;
+
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+
+    // giới hạn size (tuỳ bạn chỉnh)
+    const maxMb = isVideo ? 50 : isImage ? 10 : 20;
+    if (file.size > maxMb * 1024 * 1024) {
+      alert(`File quá lớn. Giới hạn ${maxMb}MB`);
+      return;
+    }
+
+    setUploading(true);
+    setOpenEmoji(false);
+
     try {
-      return decodeURIComponent(escape(atob(str)));
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (e) {
-      return str;
+      const up = await uploadToCloudinary(file);
+
+      const payload =
+        up.resource_type === "video"
+          ? ({
+              kind: "video",
+              url: up.secure_url,
+              name: file.name,
+              bytes: up.bytes,
+              duration: up.duration,
+            } as const)
+          : up.resource_type === "image"
+          ? ({
+              kind: "image",
+              url: up.secure_url,
+              name: file.name,
+              bytes: up.bytes,
+              width: up.width,
+              height: up.height,
+            } as const)
+          : ({
+              kind: "file",
+              url: up.secure_url,
+              name: file.name,
+              bytes: up.bytes,
+              mime: file.type,
+            } as const);
+
+      const encoded = encodeMes(payload);
+
+      if (mode === "people") await chatService.sendToPeople(target, encoded);
+      else await chatService.sendToRoom(target, encoded);
+
+      const nowISO = new Date().toISOString();
+      const serverStyleTime = nowISO.replace("T", " ").split(".")[0];
+
+      onSendMessage({
+        id: Date.now(),
+        name: me,
+        type: mode === "people" ? 0 : 1,
+        to: target,
+        mes: encoded,
+        createAt: serverStyleTime,
+      });
+    } catch (e: any) {
+      alert(e?.message || "Upload thất bại");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -98,11 +175,65 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
         <div className="centerChat">
           {messages.map((msg) => {
             const isOwn = msg.name === me;
+            const payload = decodeMes(msg.mes);
+
             return (
-              <div key={msg.id} className={`messages ${isOwn ? "own" : ""}`}>
+              <div
+                key={`${msg.id}-${msg.createAt ?? ""}-${msg.mes.slice(0, 12)}`}
+                className={`messages ${isOwn ? "own" : ""}`}
+              >
                 {!isOwn && <img src="/img/avatar.jpg" alt="avatar" className="avatar" />}
                 <div className="texts">
-                  <p className="content">{decodeMessage(msg.mes)}</p>
+                  {payload.kind === "text" && <p className="content">{payload.text}</p>}
+
+                  {payload.kind === "image" && (
+                    <img
+                      src={payload.url}
+                      alt={payload.name ?? "image"}
+                      style={{ maxWidth: 280, borderRadius: 12 }}
+                    />
+                  )}
+
+                  {payload.kind === "video" && (
+                    <video
+                      src={payload.url}
+                      controls
+                      style={{ maxWidth: 320, borderRadius: 12 }}
+                    />
+                  )}
+
+                  {payload.kind === "file" && (
+                    <a
+                      href={payload.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: "inline-flex",
+                        gap: 8,
+                        alignItems: "center",
+                        padding: "8px 12px",
+                        borderRadius: 12,
+                        background: "#f2f2f2",
+                        maxWidth: 320,
+                        textDecoration: "none",
+                        color: "#111",
+                      }}
+                      title={payload.name}
+                    >
+                      <span style={{ fontSize: 18 }}>📎</span>
+                      <span
+                        style={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {payload.name}
+                        {payload.bytes ? ` • ${formatBytes(payload.bytes)}` : ""}
+                      </span>
+                    </a>
+                  )}
+
                   <span>{formatToLocalTime(msg.createAt) ?? ""}</span>
                 </div>
               </div>
@@ -112,26 +243,55 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
         </div>
 
         <div className="bottomChat">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="*/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void sendAnyFile(f);
+              e.currentTarget.value = "";
+            }}
+          />
+
+          {/* Attach button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            style={{ marginRight: 8 }}
+            title="Gửi ảnh/video/tệp"
+          >
+            {uploading ? "Uploading..." : "📎"}
+          </button>
+
           <input
             type="text"
             placeholder="Nhập tin nhắn..."
             value={text}
             onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
+            onKeyDown={(e) => e.key === "Enter" && void sendText()}
+            disabled={uploading}
           />
+
           <div className="emoji">
             <i
-                className="fa-regular fa-face-smile fa-xl"
-                onClick={() => setOpenEmoji((prev) => !prev)}
-                style={{ cursor: "pointer" }}
+              className="fa-regular fa-face-smile fa-xl"
+              onClick={() => setOpenEmoji((prev) => !prev)}
+              style={{ cursor: "pointer" }}
+              title="Emoji"
             ></i>
+
             {openEmoji && (
-                <div className="emojiPicker">
-                  <EmojiPicker onEmojiClick={showEmoji}/>
-                </div>
+              <div className="emojiPicker">
+                <EmojiPicker onEmojiClick={showEmoji} />
+              </div>
             )}
           </div>
-          <button className="sendButton" onClick={send}>
+
+          <button className="sendButton" onClick={() => void sendText()} disabled={uploading}>
             Gửi
           </button>
         </div>
