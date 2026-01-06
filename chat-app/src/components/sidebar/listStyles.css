@@ -1,0 +1,55 @@
+.list-section {
+    width: 100%;
+}
+
+.scroll-box {
+    max-height: 450px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.list-item {
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid #eee;
+    background-color: #fff;
+    transition: all 0.2s ease;
+}
+
+.list-item:hover {
+    filter: brightness(0.98);
+}
+
+.item-name {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.item-time {
+    font-size: 11px;
+    color: #999;
+}
+
+.list-item.is-user.active {
+    border-color: #4f46e5;
+    background-color: #f5f7ff;
+}
+
+.list-item.is-room.active {
+    border-color: #10b981;
+    background-color: #ecfdf5;
+}
+
+.list-item.is-room .item-name {
+    color: #065f46;
+}
+
+.scroll-box::-webkit-scrollbar {
+    width: 4px;
+}
+.scroll-box::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
