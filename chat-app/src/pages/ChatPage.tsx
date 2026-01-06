@@ -195,7 +195,7 @@ export default function ChatPage() {
 
       closeSocket();
     };
-  }, [me, savedReLoginCode, navigate]);
+  }, []);
 
   // ----CHƯA TEST LẤY LỊCH SỬ CHAT-----
   // chọn chat -> load lịch sử
