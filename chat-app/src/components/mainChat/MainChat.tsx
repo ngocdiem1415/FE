@@ -32,6 +32,18 @@ function formatBytes(bytes?: number) {
   return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+function fileIcon(mime?: string, name?: string) {
+  const n = (name || "").toLowerCase();
+  const m = (mime || "").toLowerCase();
+
+  if (m.includes("pdf") || n.endsWith(".pdf")) return "📄";
+  if (m.includes("word") || n.endsWith(".doc") || n.endsWith(".docx")) return "📝";
+  if (m.includes("excel") || n.endsWith(".xls") || n.endsWith(".xlsx")) return "📊";
+  if (m.includes("powerpoint") || n.endsWith(".ppt") || n.endsWith(".pptx")) return "📽️";
+  if (m.includes("zip") || n.endsWith(".zip") || n.endsWith(".rar") || n.endsWith(".7z")) return "🗜️";
+  return "📎";
+}
+
 const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }) => {
   const [text, setText] = useState("");
   const [openEmoji, setOpenEmoji] = useState(false);
@@ -99,31 +111,31 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
     try {
       const up = await uploadToCloudinary(file);
 
-      const payload =
-        up.resource_type === "video"
-          ? ({
-              kind: "video",
-              url: up.secure_url,
-              name: file.name,
-              bytes: up.bytes,
-              duration: up.duration,
-            } as const)
-          : up.resource_type === "image"
-          ? ({
-              kind: "image",
-              url: up.secure_url,
-              name: file.name,
-              bytes: up.bytes,
-              width: up.width,
-              height: up.height,
-            } as const)
-          : ({
-              kind: "file",
-              url: up.secure_url,
-              name: file.name,
-              bytes: up.bytes,
-              mime: file.type,
-            } as const);
+       const payload = isVideo
+        ? ({
+            kind: "video",
+            url: up.secure_url,
+            name: file.name,
+            bytes: up.bytes ?? file.size,
+            duration: up.duration,
+          } as const)
+        : isImage
+        ? ({
+            kind: "image",
+            url: up.secure_url,
+            name: file.name,
+            bytes: up.bytes ?? file.size,
+            width: up.width,
+            height: up.height,
+          } as const)
+        : ({
+            kind: "file",
+            url: up.secure_url,
+            name: file.name,
+            bytes: up.bytes ?? file.size,
+            mime: file.type,
+          } as const);
+
 
       const encoded = encodeMes(payload);
 
