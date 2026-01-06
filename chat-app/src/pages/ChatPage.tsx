@@ -1,19 +1,21 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import {connectSocket, onSocketMessage, sendSocket} from "../api/socketClient";
-import {ACTION_NAME, ChatEvent} from "../constants/chatEvents";
+import {connectSocket, onSocketMessage} from "../api/socketClient";
+import {ChatEvent} from "../constants/chatEvents";
 import { userService } from "../services/userService";
 import { peopleService } from "../services/userService";
 import { roomService } from "../services/roomApi";
+import { relogin } from "../services/authApi.ts";
 import { APP_ROUTES } from "../constants/routes";
 
 import type { ChatMessage} from "../types/chatType";
-import { relogin } from "../services/authApi.ts";
 import type { UserItem } from "../types/userType";
 import type { WsResponse } from "../types/commonType";
+import type { RoomData } from "../types/roomType";
 
 import LeftSideBar from "../components/sidebar/LeftSideBar";
 import MainChat from "../components/mainChat/MainChat";
+import RightSideBar from "../components/rightSideBar/RightSideBar.tsx";
 
 type ChatMode = "people" | "room";
 
@@ -66,17 +68,10 @@ export default function ChatPage() {
 
       // 2. KÍCH HOẠT HEARTBEAT
       heartbeatInterval = setInterval(async () => {
-        const pingPayload = {
-          action: ACTION_NAME,
-          data: {
-            event: ChatEvent.CHECK_USER_ONLINE,
-            data: { user: me }
-          }
-        };
 
         // BỌC TRY-CATCH ĐỂ TRÁNH CRASH APP KHI MẤT MẠNG
         try {
-          sendSocket(pingPayload);
+          userService.checkUserOnline(me);
           console.log("Sent Heartbeat...");
         } catch (error) {
           console.warn("Heartbeat lỗi: Socket đã mất kết nối. ", error);
@@ -126,13 +121,34 @@ export default function ChatPage() {
         }
 
         // --- XỬ LÝ LỊCH SỬ TIN NHẮN ---
-        if (msg.event === ChatEvent.GET_PEOPLE_CHAT_MES || msg.event === ChatEvent.GET_ROOM_CHAT_MES) {
+        // -- people --
+        if (msg.event === ChatEvent.GET_PEOPLE_CHAT_MES) {
           const list = Array.isArray(msg.data) ? msg.data : [];
           const sortedList = [...list].sort((a, b) => {
             return new Date(a.createAt || 0).getTime() - new Date(b.createAt || 0).getTime();
           });
 
           setMessages(sortedList);
+          return;
+        }
+
+        // -- room --
+        if ((msg.event === ChatEvent.JOIN_ROOM || msg.event === ChatEvent.GET_ROOM_CHAT_MES)
+            && msg.status === "success") {
+
+          const roomData = msg.data as RoomData;
+
+          // Chỉ cập nhật nếu đúng là phòng đang mở (đề phòng mạng lag trả về phòng cũ)
+          // if (roomData.name === targetRef.current) { // Optional: check kỹ hơn
+          // console.log("Joined Room & Loaded Messages:", roomData.name);
+
+          const list = roomData.chatData || [];
+          const sortedList = [...list].sort((a, b) => {
+            return new Date(a.createAt || 0).getTime() - new Date(b.createAt || 0).getTime();
+          });
+
+          setMessages(sortedList);
+          // }
           return;
         }
 
@@ -189,7 +205,7 @@ export default function ChatPage() {
     } else {
       // room cần join trước để tránh lỗi
       roomService.joinRoom(target);
-      roomService.getRoomMessages(target, 1);
+      // roomService.getRoomMessages(target, 1);
     }
   }, [mode, target]);
 
@@ -222,6 +238,7 @@ export default function ChatPage() {
                           messages={messages}
                           onSendMessage={handleManualAddMessage}/>
             </div>
+          <RightSideBar/>
         </div>
     );
 }

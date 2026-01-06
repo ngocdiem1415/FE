@@ -20,4 +20,29 @@ export const userService = {
         event: ChatEvent.GET_USER_LIST,
       },
     }),
+
+
+    checkUserOnline: (user: string) => {
+        sendSocketSafe({
+            action: ACTION_NAME,
+            data: {
+                event: ChatEvent.CHECK_USER_ONLINE,
+                data: {
+                    user: user
+                },
+            },
+        });
+    },
+
+    checkUserExist: (user: string) => {
+        sendSocketSafe({
+            action: ACTION_NAME,
+            data: {
+                event: ChatEvent.CHECK_USER_EXIST,
+                data: {
+                    user: user
+                },
+            },
+        });
+    },
 };
