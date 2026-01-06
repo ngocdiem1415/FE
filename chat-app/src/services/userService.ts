@@ -1,19 +1,20 @@
-import { sendSocket } from "../api/socketClient";
+import { sendSocketSafe } from "../api/socketClient";
 import { ACTION_NAME, ChatEvent } from "../constants/chatEvents";
 
 export const peopleService = {
   getPeopleMessages: (name: string, page = 1) =>
-    sendSocket(
-        { action: ACTION_NAME, data: 
-            { event: ChatEvent.GET_PEOPLE_CHAT_MES,
-                 data: { name, page } 
-                } }
-            ),
+    sendSocketSafe({
+      action: ACTION_NAME,
+      data: {
+        event: ChatEvent.GET_PEOPLE_CHAT_MES,
+        data: { name, page },
+      },
+    }),
 };
 
 export const userService = {
   getUserList: () =>
-    sendSocket(
+    sendSocketSafe(
         { action: ACTION_NAME, data:
             { event:
                 ChatEvent.GET_USER_LIST
@@ -21,7 +22,7 @@ export const userService = {
         ),
 
     checkUserOnline: (user: string) => {
-        sendSocket({
+        sendSocketSafe({
             action: ACTION_NAME,
             data: {
                 event: ChatEvent.CHECK_USER_ONLINE,
@@ -33,7 +34,7 @@ export const userService = {
     },
 
     checkUserExist: (user: string) => {
-        sendSocket({
+        sendSocketSafe({
             action: ACTION_NAME,
             data: {
                 event: ChatEvent.CHECK_USER_EXIST,

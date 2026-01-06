@@ -1,8 +1,8 @@
-import { sendSocket } from "../api/socketClient.ts";
+import { sendSocketSafe } from "../api/socketClient";
 import { ACTION_NAME, ChatEvent } from "../constants/chatEvents";
 
 export const register = (user: string, pass: string) => {
-  sendSocket({
+  return sendSocketSafe({
     action: ACTION_NAME,
     data: {
       event: ChatEvent.REGISTER,
@@ -12,7 +12,7 @@ export const register = (user: string, pass: string) => {
 };
 
 export const login = (user: string, pass: string) => {
-  sendSocket({
+  return sendSocketSafe({
     action: ACTION_NAME,
     data: {
       event: ChatEvent.LOGIN,
@@ -21,24 +21,23 @@ export const login = (user: string, pass: string) => {
   });
 };
 
+// relogin đúng theo ChatPage bạn đang dùng: relogin(me, savedReLoginCode)
 export const relogin = (user: string, code: string) => {
-  sendSocket({
+  return sendSocketSafe({
     action: ACTION_NAME,
     data: {
-      event: ChatEvent.RE_LOGIN,
-      data: {
-        user: user,
-        code: code,
-      },
+      event: ChatEvent.RE_LOGIN, // bạn đang dùng RE_LOGIN ở ChatPage
+      data: { user, code },
     },
   });
 };
 
 export const authService = {
-  logout: () => sendSocket({ 
-    action: ACTION_NAME, data: { 
-      event: ChatEvent.LOGOUT
-     }, 
-    }
-  ),
+  logout: () =>
+    sendSocketSafe({
+      action: ACTION_NAME,
+      data: {
+        event: ChatEvent.LOGOUT,
+      },
+    }),
 };
