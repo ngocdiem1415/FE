@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import {connectSocket, onSocketMessage} from "../api/socketClient";
+import {connectSocket, onSocketMessage, closeSocket} from "../api/socketClient";
 import {ChatEvent} from "../constants/chatEvents";
 import { userService } from "../services/userService";
 import { peopleService } from "../services/userService";
@@ -58,7 +58,7 @@ function ChatPage() {
         console.log("Socket Connected!");
         if (me && savedReLoginCode) {
           console.log("Found re-login code, attempting to login...");
-          relogin(me, savedReLoginCode);
+          await relogin(me, savedReLoginCode);
         } else {
           console.warn("No credentials found, redirecting to login.");
           navigate(APP_ROUTES.LOGIN);
@@ -207,6 +207,8 @@ function ChatPage() {
     return () => {
       if (heartbeatInterval) clearInterval(heartbeatInterval);
       if (unsub) unsub();
+
+      closeSocket();
     };
   }, []);
 

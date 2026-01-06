@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { connectSocket, onSocketMessage} from "../api/socketClient";
+import { connectSocket, onSocketMessage, closeSocket} from "../api/socketClient";
 import { login } from "../services/authApi";
 import { useNavigate, Link } from "react-router-dom";
 import type {WsResponse} from "../types/commonType";
@@ -18,6 +18,9 @@ const LoginPage = () => {
   }, [user]);
 
   useEffect(() => {
+    // Cleanup on unmount
+    closeSocket();
+
     let unsubscribe: undefined | (() => void);
 
     connectSocket().then(() => {
@@ -53,7 +56,7 @@ const LoginPage = () => {
     try {
       setLoading(true);
       await connectSocket();
-      login(user, pass);
+      await login(user, pass);
     } catch {
       setLoading(false);
       alert("Không thể kết nối WebSocket");
