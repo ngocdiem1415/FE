@@ -1,11 +1,11 @@
-// src/components/sidebar/LeftSideBar.tsx
 import UserInfor from "./UserInfor";
 import RoomActions from "./RoomActions";
 import SidebarTabs from "./SidebarTabs";
-import SearchUser from "./SearchUser.tsx";
+import SearchUser from "./SearchUser";
 import type { UserItem } from "../../types/userType";
+import "./sidebar.css";
 
-type Props = {
+type LeftSideProps = {
     me: string,
     selectedTarget: string | null,
     onSelectPeople: (name: string) => void,
@@ -13,23 +13,19 @@ type Props = {
     users?: UserItem[]
 };
 
-export default function LeftSideBar({me, users, selectedTarget, onSelectPeople, onSelectRoom}: Props) {
+export default function LeftSideBar({me, users, selectedTarget, onSelectPeople, onSelectRoom}: LeftSideProps) {
     return (
-        <div style={{
-            width: 320,
-            display: "flex",
-            flexDirection: "column",
-            height: "100vh",
-            borderRight: "1px solid #ddd"
-        }}>
-            <div style={{padding: 16}}>
+        <div className="left-side-bar">
+            <div className="sidebar-top-section">
                 <UserInfor me={me} isOnline={true}/>
                 <RoomActions onSelectRoom={onSelectRoom}/>
-                <SearchUser/>
+                <SearchUser
+                    selectedTarget={selectedTarget}
+                    onSelectPeople={onSelectPeople}
+                />
             </div>
 
-            {/* Phần nhúng Tabs mới vào đây */}
-            <div style={{flex: 1, minHeight: 0, padding: "0 16px"}}>
+            <div className="sidebar-bottom-section">
                 <SidebarTabs
                     users={users}
                     selectedTarget={selectedTarget}
