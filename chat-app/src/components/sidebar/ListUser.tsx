@@ -1,7 +1,8 @@
-// import { UserItem } from "../../types/chatType";
+import type { UserItem } from "../../types/userType";
+import "./listStyles.css";
 
 type UserListProps = {
-    // users: UserItem[];
+    users: UserItem[];
     selectedTarget: string | null;
     onSelectPeople: (username: string) => void;
 };
@@ -11,23 +12,14 @@ export default function ListUser({ users, selectedTarget, onSelectPeople }: User
 
     return (
         <div className="list-section">
-            <div className="scroll-box" style={{ maxHeight: "400px", overflowY: "auto" }}>
+            <div className="scroll-box">
                 {userOnly.map((user) => (
                     <div
                         key={user.name}
                         onClick={() => onSelectPeople(user.name)}
-                        style={{
-                            padding: "12px",
-                            marginBottom: "8px",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            border: "1px solid",
-                            borderColor: selectedTarget === user.name ? "#4f46e5" : "#eee",
-                            backgroundColor: selectedTarget === user.name ? "#f5f7ff" : "#fff"
-                        }}
-                    >
-                        <div style={{ fontWeight: 700 }}>{user.name}</div>
-                        <div style={{ fontSize: "11px", color: "#999" }}>{user.actionTime}</div>
+                        className={`list-item is-user ${selectedTarget === user.name ? 'active' : ''}`}>
+                        <div className="item-name">{user.name}</div>
+                        <div className="item-time">{user.actionTime}</div>
                     </div>
                 ))}
             </div>
