@@ -1,44 +1,53 @@
 import { useState } from "react";
 import UserList from "./ListUser";
 import RoomList from "./ListRoom";
+import type { UserItem } from "../../types/userType";
+import "./sidebar.css";
 
-export default function SidebarTabs({ users, selectedTarget, onSelectPeople, onSelectRoom }: any) {
+type TabProps = {
+    me: string,
+    selectedTarget: string | null,
+    onSelectPeople: (name: string) => void,
+    onSelectRoom: (name: string) => void,
+    users?: UserItem[]
+};
+
+export default function SidebarTabs({ users, selectedTarget, onSelectPeople, onSelectRoom }: TabProps) {
     const [activeTab, setActiveTab] = useState<"user" | "room">("user");
-    const userCount = users.filter((i: any) => i.type === 0).length;
-    const roomCount = users.filter((i: any) => i.type === 1).length;
+    const safeUsers = users || [];
+    const userCount = safeUsers.filter((i: any) => i.type === 0).length;
+    const roomCount = safeUsers.filter((i: any) => i.type === 1).length;
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            <div style={{ display: "flex", backgroundColor: "#f9fafb" }}>
+        <div className="tabs-container">
+            <div className="tabs-header">
                 <button
                     onClick={() => setActiveTab("user")}
-                    style={{
-                        flex: 1, padding: "12px", cursor: "pointer", border: "none",
-                        borderBottom: activeTab === "user" ? "3px solid #4f46e5" : "1px solid #eee",
-                        color: activeTab === "user" ? "#4f46e5" : "#666",
-                        fontWeight: activeTab === "user" ? "bold" : "normal"
-                    }}
+                    className={`tab-button ${activeTab === "user" ? "active-user" : ""}`}
                 >
                     Users ({userCount})
                 </button>
                 <button
                     onClick={() => setActiveTab("room")}
-                    style={{
-                        flex: 1, padding: "12px", cursor: "pointer", border: "none",
-                        borderBottom: activeTab === "room" ? "3px solid #10b981" : "1px solid #eee",
-                        color: activeTab === "room" ? "#10b981" : "#666",
-                        fontWeight: activeTab === "room" ? "bold" : "normal"
-                    }}
+                    className={`tab-button ${activeTab === "room" ? "active-room" : ""}`}
                 >
                     Rooms ({roomCount})
                 </button>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
+            <div className="tabs-content">
                 {activeTab === "user" ? (
-                    <UserList users={users} selectedTarget={selectedTarget} onSelectPeople={onSelectPeople} />
+                    <UserList
+                        users={safeUsers}
+                        selectedTarget={selectedTarget}
+                        onSelectPeople={onSelectPeople}
+                    />
                 ) : (
-                    <RoomList rooms={users} selectedTarget={selectedTarget} onSelectRoom={onSelectRoom} />
+                    <RoomList
+                        rooms={safeUsers}
+                        selectedTarget={selectedTarget}
+                        onSelectRoom={onSelectRoom}
+                    />
                 )}
             </div>
         </div>
