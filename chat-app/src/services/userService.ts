@@ -14,13 +14,12 @@ export const peopleService = {
 
 export const userService = {
   getUserList: () =>
-    sendSocketSafe({
-      action: ACTION_NAME,
-      data: {
-        event: ChatEvent.GET_USER_LIST,
-      },
-    }),
-
+    sendSocketSafe(
+        { action: ACTION_NAME, data:
+            { event:
+                ChatEvent.GET_USER_LIST
+            } }
+        ),
 
     checkUserOnline: (user: string) => {
         sendSocketSafe({
