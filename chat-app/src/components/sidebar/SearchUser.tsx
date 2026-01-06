@@ -1,40 +1,45 @@
-import React, {useEffect, useState} from "react";
-import {onSocketMessage, sendSocket} from "../../api/socketClient.ts";
-import type {ChatRequest, ServerResponse, UserCheckData} from "../../types/chatType.ts";
-import {ACTION_NAME} from "../../types/chatType.ts";
+import React, { useEffect, useState, useRef } from "react";
+import { onSocketMessage, sendSocket } from "../../api/socketClient.ts";
+import type {ChatRequest, CheckUserExitResponse, ServerResponse, UserCheckData} from "../../types/chatType.ts";
+import { ACTION_NAME } from "../../types/chatType.ts";
 
 const SearchUser: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [statusMessage, setStatusMessage] = useState<string>("");
 
+    const lastSearchRef = useRef<string>("");
     useEffect(() => {
-        const unsubscribe = onSocketMessage((response: ServerResponse) => {
+        // Gọi hàm và lưu hàm dọn dẹp vào biến
+        const unsubscribe = onSocketMessage((response: ServerResponse<CheckUserExitResponse>) => {
             if (response.event === "CHECK_USER_EXIST") {
-                if (response.data.status) {
-                    setStatusMessage(`Người dùng "${searchTerm}" tồn tại!`);
+                const { status, user } = response.data;
+                if (status) {
+                    setStatusMessage(`Người dùng "${user}" hiện đang online/tồn tại!`);
                 } else {
-                    setStatusMessage("Người dùng không tồn tại.");
+                    setStatusMessage(`Không tìm thấy người dùng "${user}".`);
                 }
             }
         });
-
-        return () => {unsubscribe()};
-    }, [searchTerm]); // Re-run effect nếu searchTerm thay đổi để xử lý logic hiển thị
+        return () => {
+            unsubscribe();
+        };
+    }, []);
 
     const handleSearch = () => {
-        if (!searchTerm.trim()) return;
+        const trimmedTerm = searchTerm.trim();
+        if (!trimmedTerm) return;
+        lastSearchRef.current = trimmedTerm;
 
         const request: ChatRequest<UserCheckData> = {
             action: ACTION_NAME,
             data: {
                 event: "CHECK_USER_EXIST",
-                data: { user: searchTerm }
+                data: { user: trimmedTerm }
             }
         };
-
         try {
             sendSocket(request);
-            setStatusMessage("Đang kiểm tra...");
+            setStatusMessage(`Đang kiểm tra "${trimmedTerm}"...`);
         } catch (error) {
             console.error(error);
             setStatusMessage("Lỗi: Chưa kết nối Socket.");
@@ -48,11 +53,12 @@ const SearchUser: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder="Tìm người dùng..."
+                placeholder="Tìm tên người dùng..."
             />
             <button onClick={handleSearch}>Tìm</button>
-            {statusMessage && <p>{statusMessage}</p>}
+            {statusMessage && <p className="status-info">{statusMessage}</p>}
         </div>
     );
 };
+
 export default SearchUser;
