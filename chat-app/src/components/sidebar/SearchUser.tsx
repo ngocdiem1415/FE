@@ -1,62 +1,84 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onSocketMessage, sendSocket } from "../../api/socketClient.ts";
-import type {ChatRequest, CheckUserExitResponse, ServerResponse, UserCheckData} from "../../types/chatType.ts";
-import { ACTION_NAME } from "../../types/chatType.ts";
+import { onSocketMessage } from "../../api/socketClient.ts";
+import type { CheckUserExitResponse, ServerResponse } from "../../types/chatType.ts";
+import { userService } from "../../services/userService.ts";
+import "./searchUser.css";
+import "../sidebar/listStyles.css";
 
-const SearchUser: React.FC = () => {
+interface SearchUserProps {
+    onSelectPeople: (username: string) => void;
+    selectedTarget: string | null;
+}
+
+const SearchUser: React.FC<SearchUserProps> = ({ onSelectPeople, selectedTarget }) => {
     const [searchTerm, setSearchTerm] = useState<string>("");
-    const [statusMessage, setStatusMessage] = useState<string>("");
-
+    const [foundUser, setFoundUser] = useState<string | null>(null);
+    const [errorMes, setErrorMes] = useState<string | null>(null);
     const lastSearchRef = useRef<string>("");
+
     useEffect(() => {
-        // Gọi hàm và lưu hàm dọn dẹp vào biến
         const unsubscribe = onSocketMessage((response: ServerResponse<CheckUserExitResponse>) => {
             if (response.event === "CHECK_USER_EXIST") {
-                const { status, user } = response.data;
+                const { status} = response.data;
                 if (status) {
-                    setStatusMessage(`Người dùng "${user}" hiện đang online/tồn tại!`);
+                    console.log(lastSearchRef)
+                    setFoundUser(lastSearchRef.current)
+                    setErrorMes(null);
                 } else {
-                    setStatusMessage(`Không tìm thấy người dùng "${user}".`);
+                    setFoundUser(null);
+                    setErrorMes(`Không tìm thấy người dùng!`);
                 }
             }
         });
-        return () => {
-            unsubscribe();
-        };
+        return () => {unsubscribe()};
     }, []);
 
     const handleSearch = () => {
         const trimmedTerm = searchTerm.trim();
         if (!trimmedTerm) return;
-        lastSearchRef.current = trimmedTerm;
 
-        const request: ChatRequest<UserCheckData> = {
-            action: ACTION_NAME,
-            data: {
-                event: "CHECK_USER_EXIST",
-                data: { user: trimmedTerm }
-            }
-        };
+        lastSearchRef.current = trimmedTerm;
+        setFoundUser(null);
+        setErrorMes(null);
         try {
-            sendSocket(request);
-            setStatusMessage(`Đang kiểm tra "${trimmedTerm}"...`);
+            userService.checkUserExist(trimmedTerm);
         } catch (error) {
-            console.error(error);
-            setStatusMessage("Lỗi: Chưa kết nối Socket.");
+            console.error("Socket error:", error);
+            setErrorMes("Lỗi kết nối máy chủ.");
         }
     };
 
+    const handleSelectFoundUser = (username: string) => {
+        onSelectPeople(username);
+        setFoundUser(null);
+        setSearchTerm("");
+        setErrorMes(null);
+        lastSearchRef.current = "";
+    };
+
     return (
-        <div className="search-box">
-            <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder="Tìm tên người dùng..."
-            />
-            <button onClick={handleSearch}>Tìm</button>
-            {statusMessage && <p className="status-info">{statusMessage}</p>}
+        <div className="search-container">
+            <div className="search-input-group">
+                <input
+                    className="input-search"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    placeholder="Tìm tên người dùng..."/>
+                <button className="btSearch" onClick={handleSearch}>Tìm</button>
+            </div>
+
+            {errorMes && <p className="status-info error">{errorMes}</p>}
+
+            {foundUser && (
+                <div className="search-result-item">
+                    <div
+                        onClick={() => foundUser && handleSelectFoundUser(foundUser)}
+                        className={`list-item is-user ${selectedTarget === foundUser ? 'active' : ''}`}>
+                        <div className="item-name">{foundUser}</div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
