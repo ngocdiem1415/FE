@@ -108,6 +108,7 @@ function ChatPage() {
               alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
               localStorage.clear();
               navigate(APP_ROUTES.LOGIN);
+              closeSocket();
             }
           }
           console.error("Socket Error:", msg.mes);
@@ -207,8 +208,6 @@ function ChatPage() {
     return () => {
       if (heartbeatInterval) clearInterval(heartbeatInterval);
       if (unsub) unsub();
-
-      closeSocket();
     };
   }, []);
 
