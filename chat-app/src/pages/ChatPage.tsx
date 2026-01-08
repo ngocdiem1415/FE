@@ -271,4 +271,4 @@ function ChatPage() {
   );
 }
 
-export default ChatPage
+export default ChatPage;
