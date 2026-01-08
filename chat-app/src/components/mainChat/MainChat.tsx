@@ -18,6 +18,7 @@ type Props = {
   target: string | null;
   messages: ChatMessage[];
   onSendMessage: (msg: ChatMessage) => void;
+  isOnline: boolean;
 };
 
 function formatBytes(bytes?: number) {
@@ -44,7 +45,7 @@ function fileIcon(mime?: string, name?: string) {
   return "📎";
 }
 
-const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }) => {
+const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, isOnline }) => {
   const [text, setText] = useState("");
   const [openEmoji, setOpenEmoji] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -56,6 +57,25 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
     if (!target) return "";
     return mode === "people" ? target : `Room: ${target}`;
   }, [mode, target]);
+
+  const renderStatus = () => {
+    // CASE 1: NẾU LÀ ROOM -> Hiển thị text tĩnh
+    if (mode === "room") {
+      return <p style={{ color: "#666", fontWeight: "400" }}></p>;
+    }
+
+    // CASE 2: NẾU LÀ PEOPLE -> Hiển thị trạng thái Online/Offline dựa vào props
+    return (
+        <p style={{ color: isOnline ? "#4caf50" : "#999", fontWeight: isOnline ? "600" : "400" }}>
+          {isOnline ? (
+              <>
+                <i className="fa-solid fa-circle" style={{fontSize: 8, marginRight: 5}}></i>
+                Đang hoạt động
+              </>
+          ) : "Ngoại tuyến"}
+        </p>
+    );
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -173,10 +193,14 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
       <React.Fragment>
         <div className="topChat">
           <div className="user">
-            <img src="/img/avatar.jpg" alt="avatar" className="avatar" />
+            <img
+                src={mode === "room" ? "/img/avt_group.jpg" : "/img/anotherAvatar.jpg"}
+                alt="Avatar"
+                className="rsb-avatar"
+            />
             <div className="texts">
               <span>{title}</span>
-              <p>Đang hoạt động</p>
+              {renderStatus()}
             </div>
           </div>
           <div className="icon">
@@ -194,8 +218,9 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
                 key={`${msg.id}-${msg.createAt ?? ""}-${msg.mes.slice(0, 12)}`}
                 className={`messages ${isOwn ? "own" : ""}`}
               >
-                {!isOwn && <img src="/img/avatar.jpg" alt="avatar" className="avatar" />}
+                {!isOwn && <img src="/img/anotherAvatar.jpg" alt="avatar" className="avatar" />}
                 <div className="texts">
+                  {!isOwn && <span className="sender-name">{msg.name}</span>}
                   {payload.kind === "text" && <p className="content">{payload.text}</p>}
 
                   {payload.kind === "image" && (
@@ -245,7 +270,6 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage }
                       </span>
                     </a>
                   )}
-
                   <span>{formatToLocalTime(msg.createAt) ?? ""}</span>
                 </div>
               </div>
