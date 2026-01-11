@@ -1,7 +1,7 @@
-import { sendSocket } from "../api/socketClient";
+import { sendSocketSafe } from "../api/socketClient";
 import { ChatEvent, ACTION_NAME } from "../constants/chatEvents";
 import type { SocketRequest } from "../types/commonType";
-import type {SendChatData } from "../types/chatType";
+import type { SendChatData } from "../types/chatType";
 
 export const chatService = {
   sendChat: (chatData: SendChatData) => {
@@ -12,22 +12,24 @@ export const chatService = {
         data: chatData,
       },
     };
-    sendSocket(payload);
+
+    // an toàn: nếu socket chưa open sẽ tự connect + queue
+    return sendSocketSafe(payload);
   },
 
   sendToRoom: (roomName: string, message: string) => {
-    chatService.sendChat({
-         type: "room", 
-         to: roomName, 
-         mes: message 
-        });
+    return chatService.sendChat({
+      type: "room",
+      to: roomName.trim().toLowerCase(), // tránh lỗi ABC vs abc
+      mes: message,
+    });
   },
 
   sendToPeople: (username: string, message: string) => {
-    chatService.sendChat({
-         type: "people", 
-         to: username, 
-         mes: message 
-        });
+    return chatService.sendChat({
+      type: "people",
+      to: username.trim(),
+      mes: message,
+    });
   },
 };

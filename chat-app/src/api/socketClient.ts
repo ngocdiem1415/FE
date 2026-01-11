@@ -69,7 +69,7 @@ export function onSocketMessage(cb: Handler) {
 /**
  * Send payload via WS (must be connected).
  */
-export function sendSocket(payload: any) {
+export function sendSocketSafe(payload: any) {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     throw new Error("Socket not connected. Call connectSocket() first.");
   }

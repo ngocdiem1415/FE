@@ -1,89 +1,46 @@
-import './rightSideBar.css'
+import React from "react";
+import "./rightSideBar.css";
+import GroupMembers from "./GroupMembers";
+import GroupMedia from "./GroupMedia";
+import GroupFiles from "./GroupFiles";
+import type { RoomData } from "../../types/roomType";
+import type { ChatMessage } from "../../types/chatType";
 
-const RightSideBar = () => {
-    return(
-        <div className='rightSideBar'>
-            <div className="user">
-                <img src="/img/avatar.jpg" alt=""/>
-                <h2>OzuSus</h2>
-                <p>Lorem ipsum dolor sit amet</p>
+type Props = {
+    mode: "people" | "room";
+    target: string | null;
+    roomData: RoomData | null; // Dữ liệu phòng (nếu mode là room)
+    messages: ChatMessage[]; // Lịch sử chat (để lọc ảnh/file)
+};
+
+const RightSideBar: React.FC<Props> = ({ mode, target, roomData, messages }) => {
+
+    if (!target) return null;
+
+    return (
+        <div className="rightSideBar">
+            <div className="rsb-header">
+                <h3 className="rsb-title">
+                    {mode === "room" ? "Thông tin nhóm" : "Thông tin hội thoại"}
+                </h3>
+                <img
+                    src={mode === "room" ? "/img/avt_group.jpg" : "/img/anotherAvatar.jpg"}
+                    alt="Avatar"
+                    className="rsb-avatar"
+                />
+                <p style={{marginTop: 5, color: "#666"}}>{target}</p>
             </div>
-            <div className="info">
-                <div className="option">
-                    <div className="title">
-                        <span>Chat Setting</span>
-                        {/*<img src="/img/arrowUp.png" alt=""/>*/}
-                    </div>
-                </div>
-                <div className="option">
-                    <div className="title">
-                        <span>Privacy & Help</span>
-                        {/*<img src="/img/arrowUp.png" alt=""/>*/}
-                    </div>
-                </div>
-                <div className="option">
-                    <div className="title">
-                        <span>Photos</span>
-                        {/*<img src="/img/arrowDown.png" alt=""/>*/}
-                    </div>
-                    <div className="photos">
-                        <div className="photoItem">
-                            <div className="photoDetail">
-                                <img
-                                    src="https://static0.gamerantimages.com/wordpress/wp-content/uploads/2021/06/Subnautica-Sea-Dragon-1.jpg"
-                                    alt=""/>
-                                <span>PhotoName</span>
-                            </div>
-                            <img src="/img/download.png" alt="" className="downloadIcon"/>
-                        </div>
-                        <div className="photoItem">
-                            <div className="photoDetail">
-                                <img
-                                    src="https://static0.gamerantimages.com/wordpress/wp-content/uploads/2021/06/Subnautica-Sea-Dragon-1.jpg"
-                                    alt=""/>
-                                <span>PhotoName</span>
-                            </div>
-                            <img src="/img/download.png" alt="" className="downloadIcon"/>
-                        </div>
-                        <div className="photoItem">
-                            <div className="photoDetail">
-                                <img
-                                    src="https://static0.gamerantimages.com/wordpress/wp-content/uploads/2021/06/Subnautica-Sea-Dragon-1.jpg"
-                                    alt=""/>
-                                <span>PhotoName</span>
-                            </div>
-                            <img src="/img/download.png" alt="" className="downloadIcon"/>
-                        </div>
-                        <div className="photoItem">
-                            <div className="photoDetail">
-                                <img
-                                    src="https://static0.gamerantimages.com/wordpress/wp-content/uploads/2021/06/Subnautica-Sea-Dragon-1.jpg"
-                                    alt=""/>
-                                <span>PhotoName</span>
-                            </div>
-                            <img src="/img/download.png" alt="" className="downloadIcon"/>
-                        </div>
-                        <div className="photoItem">
-                            <div className="photoDetail">
-                                <img
-                                    src="https://static0.gamerantimages.com/wordpress/wp-content/uploads/2021/06/Subnautica-Sea-Dragon-1.jpg"
-                                    alt=""/>
-                                <span>PhotoName</span>
-                            </div>
-                            <img src="/img/download.png" alt="" className="downloadIcon"/>
-                        </div>
-                    </div>
-                </div>
-                <div className="option">
-                    <div className="title">
-                        <span>Files</span>
-                        <img src="/img/arrowUp.png" alt=""/>
-                    </div>
-                </div>
-                <button>Block User</button>
-                <button className="logOutBtn">Log out </button>
-            </div>
+
+            {mode === "room" && roomData && (
+                <GroupMembers
+                    members={roomData.userList || []}
+                    ownerName={roomData.own}
+                />
+            )}
+            <GroupMedia messages={messages} />
+            <GroupFiles messages={messages} />
         </div>
-    )
-}
-export default RightSideBar
+    );
+};
+
+export default RightSideBar;
