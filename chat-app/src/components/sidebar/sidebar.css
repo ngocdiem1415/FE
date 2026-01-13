@@ -1,7 +1,52 @@
 .left-side-bar {
+    /*display: flex;*/
+    /*flex-direction: column;*/
+    /*height: 100%;*/
+    position: relative; /* Để thanh resizer bám theo */
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    background-color: #fff;
+    border-right: 1px solid #ddd;
+    /* Loại bỏ width cố định ở đây vì đã dùng inline-style trong React */
+    flex-shrink: 0; /* Không cho sidebar bị co lại bởi flex cha */
+}
+
+.sidebar-resizer {
+    width: 5px;
+    cursor: col-resize;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    transition: background 0.2s;
+}
+.sidebar-resizer:hover,
+.sidebar-resizer:active {
+    background: rgba(24, 144, 255, 0.5); /* Hiện màu xanh nhẹ khi kéo */
+    width: 5px;
+}
+.sidebar-header {
+    /*display: flex;*/
+    /*justify-content: space-between;*/
+    /*align-items: center;*/
+    /*padding: 15px;*/
+    background-color: #f8e5fc;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.my-profile {
+}
+
+.logout-btn-global {
+    padding: 5px;
+    border: 1px #1a1a1a solid;
 }
 
 .sidebar-top-section {
