@@ -4,6 +4,7 @@ import type { CheckUserExitResponse, ServerResponse } from "../../types/chatType
 import { userService } from "../../services/userService.ts";
 import "./searchUser.css";
 import "../sidebar/listStyles.css";
+import UserInfor from "./UserInfor.tsx";
 
 interface SearchUserProps {
     onSelectPeople: (username: string) => void;
@@ -75,7 +76,11 @@ const SearchUser: React.FC<SearchUserProps> = ({ onSelectPeople, selectedTarget 
                     <div
                         onClick={() => foundUser && handleSelectFoundUser(foundUser)}
                         className={`list-item is-user ${selectedTarget === foundUser ? 'active' : ''}`}>
-                        <div className="item-name">{foundUser}</div>
+                        <UserInfor
+                            className="item-name"
+                            me={foundUser}
+                            isOnline={true} // Hoặc user.isOnline nếu API của bạn có trả về
+                        />
                     </div>
                 </div>
             )}

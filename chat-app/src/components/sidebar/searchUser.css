@@ -40,16 +40,20 @@
     border: 1px solid #fecaca;
 }
 
-.search-input-group{
+.search-input-group {
+    display: flex;
     margin-bottom: 8px;
+    justify-content: space-between;
 }
 
 .search-input-group .input-search {
+    width: 100%;
     padding: 10px;
     boxSizing: "border-box"
 }
 
-.search-input-group .btSearch{
+.search-input-group .btSearch {
     boxSizing: "border-box";
     margin-left: 8px;
+    background-color: #e5f8fb;
 }
