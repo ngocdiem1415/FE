@@ -3,6 +3,7 @@ import UserList from "./ListUser";
 import RoomList from "./ListRoom";
 import type { UserItem } from "../../types/userType";
 import "./sidebar.css";
+import UserInfor from "./UserInfor.tsx";
 
 type TabProps = {
     me: string,
