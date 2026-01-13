@@ -3,3 +3,8 @@ export type UserItem = {
     type: number;
     actionTime: string;
 };
+
+export interface CheckUserExitResponse {
+    status: boolean;
+    user: string;
+}
