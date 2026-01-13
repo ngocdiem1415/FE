@@ -1,14 +1,16 @@
-import { useState } from "react";
-import { roomService } from "../../services/roomApi";
+import {useState} from "react";
+import {roomService} from "../../services/roomApi";
+import "./roomAction.css";
 
-export default function RoomActions({ onSelectRoom }) {
-  const [room, setRoom] = useState("");
+export default function RoomActions({onSelectRoom}) {
+    const [room, setRoom] = useState("");
+    const [isOpen, setIsOpen] = useState(false);
 
-  const create = () => {
-    const name = room.trim();
-    if (!name) return;
-    roomService.createRoom(name);
-  };
+    const create = () => {
+        const name = room.trim();
+        if (!name) return;
+        roomService.createRoom(name);
+    };
 
     const join = () => {
         const name = room.trim();
@@ -18,22 +20,32 @@ export default function RoomActions({ onSelectRoom }) {
     };
 
     return (
-    <div>
-      <h4 style={{ margin: "8px 0" }}>Room</h4>
-      <input
-        value={room}
-        onChange={(e) => setRoom(e.target.value)}
-        placeholder="Tên phòng..."
-        style={{ width: "100%", padding: 10, boxSizing: "border-box" }}
-      />
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button style={{ flex: 1, marginBottom:10 }} onClick={create}>
-                Create
-            </button>
-            <button style={{ flex: 1, marginBottom:10 }} onClick={join}>
-                Join
-            </button>
+        <div className="room-actions-wrapper">
+            {/* Click vào header để đóng/mở */}
+            <div className="room-header" onClick={() => setIsOpen(!isOpen)}>
+                <h4 className="titleRoom">Room</h4>
+                <i className={`fas fa-chevron-down toggle-icon ${isOpen ? 'open' : ''}`}></i>
+            </div>
+
+            {/* Chỉ hiển thị nội dung khi isOpen là true */}
+            {isOpen && (
+                <div className="room-content-expand">
+                    <input
+                        className="input-name-room"
+                        value={room}
+                        onChange={(e) => setRoom(e.target.value)}
+                        placeholder="Tên phòng..."
+                    />
+                    <div className="room-buttons-container">
+                        <button className="btn-action" onClick={create}>
+                            Create
+                        </button>
+                        <button className="btn-action" onClick={join}>
+                            Join
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
-    </div>
-  );
+    );
 }

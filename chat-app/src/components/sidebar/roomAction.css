@@ -1,0 +1,42 @@
+.room-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer; /* Cho phép click vào cả header */
+    padding: 5px 0;
+}
+
+.titleRoom {
+    margin: 0;
+    font-size: 14px;
+}
+
+.toggle-icon {
+    font-size: 12px;
+    transition: transform 0.3s ease;
+}
+
+.toggle-icon.open {
+    transform: rotate(180deg); /* Xoay icon khi mở */
+}
+
+.input-name-room {
+    width: 100%;
+    padding: 8px;
+    margin-top: 8px;
+    box-sizing: border-box;
+}
+
+.room-buttons-container {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.btn-action {
+    flex: 1;
+    margin-bottom: 10px;
+    cursor: pointer;
+    background-color: #e5f8fb;
+
+}
