@@ -1,14 +1,146 @@
 // src/api/socketClient.ts
+import {ACTION_NAME} from "../types/chatType.ts";
+import {ChatEvent} from "../constants/chatEvents.ts";
+
 const WS_URL = "wss://chat.longapp.site/chat/chat";
 
 let socket: WebSocket | null = null;
 let connectPromise: Promise<void> | null = null;
+let isIntentionalClose = false;
+let isAuthError = false;
 
 type Handler = (data: any) => void;
 const handlers = new Set<Handler>();
 
+let sessionExpiredHandler: (() => void) | null = null;
+export const setSessionExpiredHandler = (handler: () => void) => {
+    sessionExpiredHandler = handler;
+};
+
+const sendQueue: any[] = [];
+const MAX_QUEUE = 200;
+
+//reconnect
+let reconnectTimer: any = null;
+let reconnectAttempts = 0;
+const RECONNECT_BASE_DELAY = 1000;
+const RECONNECT_MAX_DELAY = 10000;
+
+//heart beat
+let heartbeatTimer: any = null;
+const HEARTBEAT_INTERVAL = 30000;
+let missedHeartbeats = 0;
+const MAX_MISSED_HEARTBEATS = 3;
+
+const getPingPayload = () => {
+    const me = localStorage.getItem("user");
+    if (!me) return null;
+    return {
+        action: ACTION_NAME,
+        data: {
+            event: ChatEvent.CHECK_USER_ONLINE,
+            data: {user: me}
+        }
+    };
+};
+
 function isOpen(ws: WebSocket | null) {
-  return ws && ws.readyState === WebSocket.OPEN;
+    return ws && ws.readyState === WebSocket.OPEN;
+}
+
+/**
+ * HEARTBEAT
+ * - if websocket already open but server not response (in case of network failure)
+ * => If you call the API three times and receive no response, try reconnecting.*/
+function startHeartbeat() {
+    stopHeartbeat();
+    missedHeartbeats = 0;
+
+    heartbeatTimer = setInterval(() => {
+        if (!isOpen(socket)) return;
+
+        // 1. Kiểm tra xem server có im lặng quá lâu không
+        if (missedHeartbeats >= MAX_MISSED_HEARTBEATS) {
+            console.warn(`Mạng yếu: Server không phản hồi ${missedHeartbeats} lần. Đang tái kết nối...`);
+            socket?.close();
+            return;
+        }
+
+        // 2. Gửi Ping
+        try {
+            const payload = getPingPayload();
+            if (!payload) {
+                return;
+            }
+            missedHeartbeats++;
+            socket?.send(JSON.stringify(payload));
+            console.log("Sent heartbeat...");
+        } catch (e) {
+            console.warn("Ping failed", e);
+        }
+    }, HEARTBEAT_INTERVAL);
+}
+
+function stopHeartbeat() {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+    missedHeartbeats = 0;
+}
+
+//Khi nhận bất kì message nào của server trả về thì reset lại missedHeartbeats
+function resetHeartbeatCounter() {
+    if (missedHeartbeats > 0) {
+        missedHeartbeats = 0;
+    }
+}
+
+/**
+ * RECONNECT
+ * - If you actively disconnect, ignore this.
+ * - If the socket is suddenly disconnected =>  reconnect.*/
+function scheduleReconnect() {
+    if (isIntentionalClose) return; // Nếu chủ động đóng thì không reconnect
+
+    if (isAuthError) {
+        console.log("Dừng Reconnect do lỗi xác thực (Auth Error).");
+        return;
+    }
+
+    if (reconnectTimer) return;
+
+    const delay = Math.min(RECONNECT_MAX_DELAY, RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempts));
+    console.log(`WS: Mất kết nối. Thử lại sau ${delay}ms... (Lần ${reconnectAttempts + 1})`);
+
+    reconnectAttempts++;
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        // Kiểm tra lại mạng trước khi connect
+        if (navigator.onLine) {
+            connectSocket().catch(() => scheduleReconnect());
+        } else {
+            // Nếu trình duyệt đang offline, chờ sự kiện 'online' của window hoặc thử lại sau
+            scheduleReconnect();
+        }
+    }, delay);
+}
+
+function attemptAutoRelogin() {
+    const user = localStorage.getItem("user");
+    const code = localStorage.getItem("reLoginCode");
+
+    if (user && code) {
+        console.log("Auto-Relogin triggered on socket open...");
+        const payload = {
+            action: ACTION_NAME,
+            data: {
+                event: ChatEvent.RE_LOGIN,
+                data: { user, code }
+            }
+        };
+        socket?.send(JSON.stringify(payload));
+    } else {
+        console.log("No credentials found. Waiting for manual login.");
+    }
 }
 
 /**
@@ -16,72 +148,164 @@ function isOpen(ws: WebSocket | null) {
  * - If already OPEN -> resolve immediately
  * - If CONNECTING -> return same promise
  */
-export function connectSocket(): Promise<void> {
-  if (isOpen(socket)) return Promise.resolve();
-  if (connectPromise) return connectPromise;
+function handleSocketOpen(){
+    console.log("WS connected");
+    isAuthError = false;
+    reconnectAttempts = 0;
+    startHeartbeat();
+    flushQueue();
+    attemptAutoRelogin();
+}
 
-  connectPromise = new Promise<void>((resolve, reject) => {
-    socket = new WebSocket(WS_URL);
-
-    socket.onopen = () => {
-      console.log("WS connected");
-      resolve();
-    };
-
-    socket.onmessage = (e) => {
-      try {
+function handleSocketMessage(e: MessageEvent){
+    resetHeartbeatCounter();
+    try {
         const raw = typeof e.data === "string" ? e.data : String(e.data);
-        const data = JSON.parse(raw);
-        handlers.forEach((cb) => cb(data));
-      } catch (err) {
+        const msg = JSON.parse(raw);
+
+        if (msg.status === "success" && (msg.event === ChatEvent.LOGIN || msg.event === ChatEvent.RE_LOGIN)) {
+            const newCode = msg.data?.RE_LOGIN_CODE || msg.data?.code;
+            if (newCode) {
+                localStorage.setItem("reLoginCode", newCode);
+            }
+        }
+
+        // Check Session Expired
+        if (msg.status === "error" &&
+            (msg.event === ChatEvent.RE_LOGIN || msg.mes?.includes("User not Login"))) {
+            if (msg.event === ChatEvent.CHECK_USER_ONLINE) {
+                return;
+            }
+            if (!localStorage.getItem("user")) {
+                return;
+            }
+            console.warn("Session Expired - Closing Socket intentionally");
+            localStorage.removeItem("reLoginCode");
+            if (sessionExpiredHandler) sessionExpiredHandler();
+            closeSocket();
+            return;
+        }
+
+        handlers.forEach((cb) => cb(msg));
+    } catch (err) {
         console.error("WS message parse error:", err, e.data);
-      }
-    };
+    }
+}
 
-    socket.onerror = () => {
-      console.error("WS error");
-      reject(new Error("WebSocket error"));
-    };
-
-    socket.onclose = () => {
-      console.warn("WS closed");
-      connectPromise = null;
-      socket = null;
-    };
-  }).catch((err) => {
-    // allow reconnect next time
+function handleSocketClose(event: CloseEvent){
     connectPromise = null;
     socket = null;
-    throw err;
-  });
+    stopHeartbeat();
 
-  return connectPromise;
+    // Case 1: Người dùng chủ động Logout hoặc gọi closeSocket()
+    if (isIntentionalClose) {
+        console.log("WS Closed intentionally (User logout/Manual close).");
+        return;
+    }
+
+    // Case 2. Lỗi xác thực do người dùng chưa đăng nhập hoặc mã relogin hết hạn
+    if (isAuthError) {
+        console.warn("Lỗi xác thực (Token không hợp lệ).");
+        return;
+    }
+
+    //Case 3. Server Crash/Bug (thường xảy ra khi gọi các api liên quan đến room)
+    if (event.code === 1000) {
+        console.warn("Lỗi Server -> Đang Reconnect...");
+        scheduleReconnect();
+        return;
+    }
+
+    // Case 4. Mất mạng hoặc Server lỗi (Code 1006 - Abnormal Closure)
+    console.warn(`WS Closed unexpectedly. Code: ${event.code}, Reason: ${event.reason}`);
+    scheduleReconnect();
+}
+
+export function connectSocket(): Promise<void> {
+    if (isOpen(socket)) return Promise.resolve();
+    if (connectPromise) return connectPromise;
+
+    isIntentionalClose = false;
+
+    connectPromise = new Promise<void>((resolve, reject) => {
+        socket = new WebSocket(WS_URL);
+
+        socket.onopen = () => {
+            handleSocketOpen()
+            resolve();
+        };
+
+        socket.onmessage = handleSocketMessage;
+        socket.onclose = handleSocketClose;
+
+        socket.onerror = (err) => {
+            console.error("WS Error: " + err);
+            if (socket?.readyState === WebSocket.CONNECTING) {
+                reject(new Error("Connection failed"));
+            }
+        };
+    }).catch((err) => {
+        connectPromise = null;
+        socket = null;
+        stopHeartbeat();
+        scheduleReconnect();
+        throw err;
+    });
+
+    return connectPromise;
+}
+
+function flushQueue() {
+    if (!isOpen(socket)) return;
+    while (sendQueue.length > 0) {
+        const payload = sendQueue.shift();
+        try {
+            socket!.send(JSON.stringify(payload));
+        } catch {
+            sendQueue.unshift(payload);
+            break;
+        }
+    }
 }
 
 /**
  * Subscribe socket messages. Returns unsubscribe().
  */
 export function onSocketMessage(cb: Handler) {
-  handlers.add(cb);
-  return () => handlers.delete(cb);
+    handlers.add(cb);
+    return () => handlers.delete(cb);
 }
 
 /**
  * Send payload via WS (must be connected).
  */
 export function sendSocketSafe(payload: any) {
-  if (!socket || socket.readyState !== WebSocket.OPEN) {
-    throw new Error("Socket not connected. Call connectSocket() first.");
-  }
-  socket.send(JSON.stringify(payload));
+    if (isOpen(socket)) {
+        socket!.send(JSON.stringify(payload));
+        return;
+    }
+    if (sendQueue.length >= MAX_QUEUE) sendQueue.shift();
+    sendQueue.push(payload);
+
+    // Chỉ gọi connect nếu chưa có tiến trình connect nào đang chạy
+    if (!connectPromise) {
+        connectSocket().catch(()=>{});
+    }
 }
 
-/**
- * Optional: close socket manually (if you need)
- */
 export function closeSocket() {
-  if (socket) socket.close();
-  socket = null;
-  connectPromise = null;
-  handlers.clear();
+    isIntentionalClose = true;
+    stopHeartbeat();
+
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
+    if (socket) {
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+            socket.close(1000, "Client closed intentionally");
+        }
+    }
+    socket = null;
+    connectPromise = null;
 }
