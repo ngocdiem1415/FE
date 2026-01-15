@@ -52,7 +52,7 @@ const getPingPayload = () => {
     return {
         action: ACTION_NAME,
         data: {
-            event: ChatEvent.CHECK_USER_ONLINE,
+            event: ChatEvent.CHECK_USER_EXIST,
             data: {user: me}
         }
     };
