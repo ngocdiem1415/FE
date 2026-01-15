@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "../styles/ChatPage.css";
 import LeftSideBar from "../components/sidebar/LeftSideBar";
 import MainChat from "../components/mainChat/MainChat";
 import RightSideBar from "../components/rightSideBar/RightSideBar";
@@ -16,7 +17,8 @@ function ChatPage() {
     messages,
     currentRoomData,
     isTargetOnline,
-    addMessageManually
+    addMessageManually,
+    isConnected
   } = useChatSocket(mode, target);
 
   const onSelectPeople = (username: string) => {
@@ -31,6 +33,13 @@ function ChatPage() {
 
   return (
       <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+        {/* HIỂN THỊ THÔNG BÁO MẤT KẾT NỐI */}
+        {!isConnected && (
+            <div className="connection-overlay">
+              <div className="spinner"></div>
+              <span className="overlay-text">Mất kết nối. Đang thử lại...</span>
+            </div>
+        )}
         <LeftSideBar
             me={me}
             users={users.filter((u) => u.name !== me)}
@@ -39,7 +48,7 @@ function ChatPage() {
             onSelectRoom={onSelectRoom}
         />
 
-        <div style={{ flex: 1, position: "relative" }}>
+        <div style={{ flex: 1, position: "relative", pointerEvents: isConnected ? 'auto' : 'none', opacity: isConnected ? 1 : 0.7 }}>
           <MainChat
               me={me}
               mode={mode}

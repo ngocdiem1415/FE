@@ -4,7 +4,8 @@ import {
     connectSocket,
     onSocketMessage,
     closeSocket,
-    setSessionExpiredHandler
+    setSessionExpiredHandler,
+    onConnectionChange
 } from "../api/socketClient";
 import { ChatEvent } from "../constants/chatEvents";
 import { userService, peopleService } from "../services/userService";
@@ -25,6 +26,8 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [currentRoomData, setCurrentRoomData] = useState<RoomData | null>(null);
     const [isTargetOnline, setIsTargetOnline] = useState(false);
+    const [isConnected, setIsConnected] = useState(false);
+
 
     const modeRef = useRef<ChatMode>(mode);
     const targetRef = useRef<string | null>(target);
@@ -41,13 +44,23 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
             navigate(APP_ROUTES.LOGIN);
         });
 
-        connectSocket().then(() => {
-            console.log("Hook: Socket Connected");
-            userService.getUserList();
-        }).catch(err => console.error("Hook: Connection failed", err));
+        // connectSocket().then(() => {
+        //     console.log("Hook: Socket Connected");
+        //     setIsConnected(true);
+        //     userService.getUserList();
+        // }).catch(err => {
+        //     console.error("Hook: Connection failed", err)
+        //     setIsConnected(false);
+        // });
+        connectSocket().catch(err => console.error(err));
+
+        const unsubConnection = onConnectionChange((status) => {
+            setIsConnected(status);
+        });
 
         return () => {
             closeSocket();
+            unsubConnection();
         };
     }, [navigate]);
 
@@ -120,6 +133,15 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
     }, []);
 
     useEffect(() => {
+        if (isConnected) {
+            const me = localStorage.getItem("user");
+            if (me) {
+                userService.getUserList();
+            }
+        }
+    }, [isConnected]);
+
+    useEffect(() => {
         const fetchData = async () => {
             if (!target) {
                 setMessages([]);
@@ -156,6 +178,7 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
         currentRoomData,
         isTargetOnline,
         addMessageManually,
+        isConnected
     };
 };
 export default useChatSocket

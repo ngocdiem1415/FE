@@ -6,8 +6,22 @@ const WS_URL = "wss://chat.longapp.site/chat/chat";
 
 let socket: WebSocket | null = null;
 let connectPromise: Promise<void> | null = null;
+
 let isIntentionalClose = false;
 let isAuthError = false;
+
+type ConnectionHandler = (isConnected: boolean) => void;
+const connectionListeners = new Set<ConnectionHandler>();
+
+export function onConnectionChange(cb: ConnectionHandler) {
+    connectionListeners.add(cb);
+    cb(isOpen(socket));
+    return () => connectionListeners.delete(cb);
+}
+
+function notifyConnectionChange(status: boolean) {
+    connectionListeners.forEach(cb => cb(status));
+}
 
 type Handler = (data: any) => void;
 const handlers = new Set<Handler>();
@@ -44,8 +58,8 @@ const getPingPayload = () => {
     };
 };
 
-function isOpen(ws: WebSocket | null) {
-    return ws && ws.readyState === WebSocket.OPEN;
+function isOpen(ws: WebSocket | null): boolean {
+    return !!(ws && ws.readyState === WebSocket.OPEN);
 }
 
 /**
@@ -150,6 +164,7 @@ function attemptAutoRelogin() {
  */
 function handleSocketOpen(){
     console.log("WS connected");
+    notifyConnectionChange(true);
     isAuthError = false;
     reconnectAttempts = 0;
     startHeartbeat();
@@ -167,6 +182,7 @@ function handleSocketMessage(e: MessageEvent){
             const newCode = msg.data?.RE_LOGIN_CODE || msg.data?.code;
             if (newCode) {
                 localStorage.setItem("reLoginCode", newCode);
+                flushQueue();
             }
         }
 
@@ -180,6 +196,7 @@ function handleSocketMessage(e: MessageEvent){
                 return;
             }
             console.warn("Session Expired - Closing Socket intentionally");
+            isAuthError = true;
             localStorage.removeItem("reLoginCode");
             if (sessionExpiredHandler) sessionExpiredHandler();
             closeSocket();
@@ -196,6 +213,7 @@ function handleSocketClose(event: CloseEvent){
     connectPromise = null;
     socket = null;
     stopHeartbeat();
+    notifyConnectionChange(false);
 
     // Case 1: Người dùng chủ động Logout hoặc gọi closeSocket()
     if (isIntentionalClose) {
@@ -222,14 +240,16 @@ function handleSocketClose(event: CloseEvent){
 }
 
 export function connectSocket(): Promise<void> {
-    if (isOpen(socket)) return Promise.resolve();
+    if (isOpen(socket)) {
+        notifyConnectionChange(true);
+        return Promise.resolve();
+    }
     if (connectPromise) return connectPromise;
 
     isIntentionalClose = false;
 
     connectPromise = new Promise<void>((resolve, reject) => {
         socket = new WebSocket(WS_URL);
-
         socket.onopen = () => {
             handleSocketOpen()
             resolve();
@@ -248,6 +268,7 @@ export function connectSocket(): Promise<void> {
         connectPromise = null;
         socket = null;
         stopHeartbeat();
+        notifyConnectionChange(false);
         scheduleReconnect();
         throw err;
     });
@@ -257,12 +278,31 @@ export function connectSocket(): Promise<void> {
 
 function flushQueue() {
     if (!isOpen(socket)) return;
-    while (sendQueue.length > 0) {
-        const payload = sendQueue.shift();
-        try {
-            socket!.send(JSON.stringify(payload));
-        } catch {
-            sendQueue.unshift(payload);
+    const queueLength = sendQueue.length;
+
+    for (let i = 0; i < queueLength; i++) {
+        const payload = sendQueue[0];
+        const eventType = payload?.data?.event;
+
+        // 1. Kiểm tra xem đây có phải là tin nhắn Auth không?
+        const isAuthMessage =
+            eventType === ChatEvent.LOGIN ||
+            eventType === ChatEvent.REGISTER ||
+            eventType === ChatEvent.RE_LOGIN;
+
+        // 2. Kiểm tra xem đã đăng nhập chưa?
+        const hasCredentials = !!localStorage.getItem("reLoginCode");
+
+        if (isAuthMessage || hasCredentials) {
+            sendQueue.shift();
+            try {
+                socket!.send(JSON.stringify(payload));
+            } catch (e) {
+                sendQueue.unshift(payload);
+                console.log(e);
+                break;
+            }
+        } else {
             break;
         }
     }
@@ -280,17 +320,26 @@ export function onSocketMessage(cb: Handler) {
  * Send payload via WS (must be connected).
  */
 export function sendSocketSafe(payload: any) {
+    // Nếu WS đang mở => gửi request luôn
     if (isOpen(socket)) {
         socket!.send(JSON.stringify(payload));
         return;
     }
+
+    //Nếu WS chưa mở => xếp vào hàng đợi
     if (sendQueue.length >= MAX_QUEUE) sendQueue.shift();
     sendQueue.push(payload);
 
-    // Chỉ gọi connect nếu chưa có tiến trình connect nào đang chạy
-    if (!connectPromise) {
-        connectSocket().catch(()=>{});
+    // Kiểm tra xem hệ thống có đang tự phục hồi không
+    // Nếu đang chờ Reconnect hoặc đang trong quá trình Connect
+    // -> return
+    if (reconnectTimer || connectPromise) {
+        console.log("Đang chờ Reconnect/Connect => Đã xếp request vào hàng đợi.");
+        return;
     }
+
+    // Chỉ gọi connect nếu chưa có tiến trình connect nào đang chạy
+    connectSocket().catch(()=>{});
 }
 
 export function closeSocket() {
@@ -308,4 +357,5 @@ export function closeSocket() {
     }
     socket = null;
     connectPromise = null;
+    notifyConnectionChange(false);
 }
