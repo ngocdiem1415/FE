@@ -30,6 +30,7 @@ function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentRoomData, setCurrentRoomData] = useState<RoomData | null>(null);
   const [isTargetOnline, setIsTargetOnline] = useState(false);
+  const [showRightBar, setShowRightBar] = useState(true);
 
   // Refs để truy cập state mới nhất trong socket callback
   const modeRef = useRef<ChatMode>("people");
@@ -257,9 +258,10 @@ function ChatPage() {
                     target={target}
                     messages={messages}
                     onSendMessage={handleManualAddMessage}
-                    isOnline={isTargetOnline}/>
+                    isOnline={isTargetOnline}
+                    onToggleInfo={() => setShowRightBar(prev => !prev)}/>
         </div>
-        {target && (
+        {showRightBar && target && (
             <RightSideBar
                 mode={mode}
                 target={target}

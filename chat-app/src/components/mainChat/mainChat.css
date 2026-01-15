@@ -216,12 +216,20 @@
 
 .mainChat .bottomChat .emoji {
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
 }
 
 .mainChat .bottomChat .emoji .emojiPicker {
     position: absolute;
-    bottom: 50px;
-    left: 0;
+    bottom: 100%;
+    right: -100px;
+    margin-bottom: 15px;
+    z-index: 1000;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    border-radius: 8px;
 }
 
 .mainChat .bottomChat .sendButton {

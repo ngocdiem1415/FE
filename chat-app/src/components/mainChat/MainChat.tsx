@@ -19,6 +19,7 @@ type Props = {
   messages: ChatMessage[];
   onSendMessage: (msg: ChatMessage) => void;
   isOnline: boolean;
+  onToggleInfo: () => void;
 };
 
 function formatBytes(bytes?: number) {
@@ -45,7 +46,7 @@ function fileIcon(mime?: string, name?: string) {
   return "📎";
 }
 
-const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, isOnline }) => {
+const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, isOnline, onToggleInfo }) => {
   const [text, setText] = useState("");
   const [openEmoji, setOpenEmoji] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -203,7 +204,9 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, 
               {renderStatus()}
             </div>
           </div>
-          <div className="icon">
+          <div className="icon"
+               onClick={onToggleInfo}
+               style={{ cursor: "pointer" }}>
             <i className="fa-solid fa-circle-info fa-xl" style={{ color: "#333333" }}></i>
           </div>
         </div>

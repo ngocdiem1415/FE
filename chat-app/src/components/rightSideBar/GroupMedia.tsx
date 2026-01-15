@@ -59,8 +59,8 @@ const GroupMedia: React.FC<Props> = ({ messages }) => {
                 padding: "6px 10px",
                 borderRadius: 8,
                 border: "1px solid #ddd",
-                background: tab === "images" ? "#111" : "#fff",
-                color: tab === "images" ? "#fff" : "#111",
+                background: tab === "images" ? "#f8e5fc" : "#fff",
+                color: tab === "images" ? "#111" : "#696969",
                 cursor: "pointer",
               }}
             >
@@ -72,8 +72,8 @@ const GroupMedia: React.FC<Props> = ({ messages }) => {
                 padding: "6px 10px",
                 borderRadius: 8,
                 border: "1px solid #ddd",
-                background: tab === "videos" ? "#111" : "#fff",
-                color: tab === "videos" ? "#fff" : "#111",
+                background: tab === "videos" ? "#f8e5fc" : "#fff",
+                color: tab === "videos" ? "#111" : "#696969",
                 cursor: "pointer",
               }}
             >
@@ -104,7 +104,10 @@ const GroupMedia: React.FC<Props> = ({ messages }) => {
               {videos.map((it, idx) => (
                 <div key={it.url + idx} style={{ border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
                   <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>{it.name || "Video"}</div>
-                  <video src={it.url} controls style={{ width: "100%", borderRadius: 10 }} />
+                  <video
+                      className="rsb-media-img"
+                      src={it.url} controls
+                      style={{ width: "100%", borderRadius: 10 }} />
                   <div style={{ marginTop: 8 }}>
                     <a href={it.url} target="_blank" rel="noreferrer">
                       Mở video
