@@ -34,17 +34,17 @@ function formatBytes(bytes?: number) {
   return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-function fileIcon(mime?: string, name?: string) {
-  const n = (name || "").toLowerCase();
-  const m = (mime || "").toLowerCase();
-
-  if (m.includes("pdf") || n.endsWith(".pdf")) return "📄";
-  if (m.includes("word") || n.endsWith(".doc") || n.endsWith(".docx")) return "📝";
-  if (m.includes("excel") || n.endsWith(".xls") || n.endsWith(".xlsx")) return "📊";
-  if (m.includes("powerpoint") || n.endsWith(".ppt") || n.endsWith(".pptx")) return "📽️";
-  if (m.includes("zip") || n.endsWith(".zip") || n.endsWith(".rar") || n.endsWith(".7z")) return "🗜️";
-  return "📎";
-}
+// function fileIcon(mime?: string, name?: string) {
+//   const n = (name || "").toLowerCase();
+//   const m = (mime || "").toLowerCase();
+//
+//   if (m.includes("pdf") || n.endsWith(".pdf")) return "📄";
+//   if (m.includes("word") || n.endsWith(".doc") || n.endsWith(".docx")) return "📝";
+//   if (m.includes("excel") || n.endsWith(".xls") || n.endsWith(".xlsx")) return "📊";
+//   if (m.includes("powerpoint") || n.endsWith(".ppt") || n.endsWith(".pptx")) return "📽️";
+//   if (m.includes("zip") || n.endsWith(".zip") || n.endsWith(".rar") || n.endsWith(".7z")) return "🗜️";
+//   return "📎";
+// }
 
 const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, isOnline, onToggleInfo }) => {
   const [text, setText] = useState("");
