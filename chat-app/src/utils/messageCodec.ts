@@ -4,7 +4,9 @@ export type MediaPayload =
   | { kind: "text"; text: string }
   | { kind: "image"; url: string; name?: string; bytes?: number; width?: number; height?: number }
   | { kind: "video"; url: string; name?: string; bytes?: number; duration?: number }
-  | { kind: "file"; url: string; name: string; bytes?: number; mime?: string };
+  | { kind: "file"; url: string; name: string; bytes?: number; mime?: string }
+  | { kind: "sticker"; key: string };
+
 
 export function b64EncodeUtf8(str: string): string {
   const bytes = new TextEncoder().encode(str);
@@ -48,6 +50,7 @@ export function decodeMes(mes: string): MediaPayload {
     if (obj?.kind === "image" && typeof obj.url === "string") return obj as MediaPayload;
     if (obj?.kind === "video" && typeof obj.url === "string") return obj as MediaPayload;
     if (obj?.kind === "file" && typeof obj.url === "string") return obj as MediaPayload;
+    if (obj?.kind === "sticker" && typeof obj.key === "string") return obj as MediaPayload;
   } catch {
     // not JSON
   }

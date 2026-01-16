@@ -100,6 +100,7 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
                     }
                     break;
 
+                    //Xử lý nhận tin nhắn realtime
                 case ChatEvent.SEND_CHAT: {
                     const m = msg.data as ChatMessage | undefined;
                     const currTarget = targetRef.current;
@@ -141,6 +142,7 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
         }
     }, [isConnected]);
 
+    //Xử lý chọn cuộc hội thoại/ room mới
     useEffect(() => {
         const fetchData = async () => {
             if (!target) {
@@ -154,7 +156,7 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
 
             try {
                 if (mode === "people") {
-                    peopleService.getPeopleMessages(target, 1);
+                    peopleService.getPeopleMessages(target, 1); //Xử lý lại đoạn get message này
                     userService.checkUserOnline(target);
                 } else {
                     roomService.joinRoom(target);
