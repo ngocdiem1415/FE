@@ -26,15 +26,17 @@ const LoginPage = () => {
         // console.log("Server response:", msg);
 
         if (msg?.event === "LOGIN") {
-          setLoading(false);
+          // setLoading(false);
 
           if (msg?.status === "success") {
+              console.log("Check event")
             localStorage.setItem("user", userRef.current);
             if (msg.data && msg.data.RE_LOGIN_CODE)
               localStorage.setItem("reLoginCode", msg.data.RE_LOGIN_CODE);
 
-            navigate("/chat");
+          navigate("/chat", { replace: true });
           } else {
+            setLoading(false);
             alert("Sai tài khoản hoặc mật khẩu");
           }
         }
