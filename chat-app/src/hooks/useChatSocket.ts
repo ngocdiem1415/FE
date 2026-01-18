@@ -194,6 +194,8 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
             setMessages([]);
             setCurrentRoomData(null);
             setIsTargetOnline(false);
+            setIsLoadingMore(false);
+            setHasMore(true);
 
             try {
                 if (mode === "people") {
