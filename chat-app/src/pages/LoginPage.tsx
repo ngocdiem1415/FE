@@ -36,7 +36,6 @@ const LoginPage = () => {
             if (msg.data?.RE_LOGIN_CODE) {
               localStorage.setItem("reLoginCode", msg.data.RE_LOGIN_CODE);
             }
-
             navigate("/chat");
             return;
           }

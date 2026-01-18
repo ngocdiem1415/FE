@@ -2,7 +2,7 @@ import { sendSocketSafe } from "../api/socketClient";
 import { ACTION_NAME, ChatEvent } from "../constants/chatEvents";
 
 export const peopleService = {
-  getPeopleMessages: (name: string, page = 1) =>
+  getPeopleMessages: (name: string, page: number) =>
     sendSocketSafe({
       action: ACTION_NAME,
       data: {
