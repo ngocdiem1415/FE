@@ -2,7 +2,7 @@ import UserInfor from "./UserInfor";
 import RoomActions from "./RoomActions";
 import SidebarTabs from "./SidebarTabs";
 import SearchUser from "./SearchUser";
-import type { UserItem } from "../../types/userType";
+import type {UserItem} from "../../types/userType";
 import "./sidebar.css";
 import {useNavigate} from "react-router-dom";
 import {authService} from "../../services/authApi.ts";
@@ -60,16 +60,20 @@ export default function LeftSideBar({me, users, selectedTarget, onSelectPeople, 
             console.error("Logout failed", error);
         } finally {
             localStorage.clear();
-            navigate(APP_ROUTES.LOGIN, { replace: true });
+            console.log(localStorage.getItem("user"))
+            setTimeout(() => {
+                navigate(APP_ROUTES.LOGIN, {replace: true});
+            }, 2000);
+            // navigate(APP_ROUTES.LOGIN, {replace: true});
         }
     };
 
     return (
         <div className="left-side-bar"
-             style={{ width: `${width}px` }}
+             style={{width: `${width}px`}}
         >
             <div className="sidebar-header">
-                <UserInfor me={me} isOnline={true} className="my-profile" />
+                <UserInfor me={me} isOnline={true} className="my-profile"/>
 
                 <button className="logout-btn-global" onClick={handleLogout} title="Logout">
                     <i className="fas fa-sign-out-alt"></i>
@@ -78,7 +82,7 @@ export default function LeftSideBar({me, users, selectedTarget, onSelectPeople, 
             </div>
 
             <div className="sidebar-top-section">
-                <SearchUser selectedTarget={selectedTarget} onSelectPeople={onSelectPeople} />
+                <SearchUser selectedTarget={selectedTarget} onSelectPeople={onSelectPeople}/>
                 <RoomActions onSelectRoom={onSelectRoom}/>
             </div>
             <div className="sidebar-bottom-section">
@@ -90,7 +94,7 @@ export default function LeftSideBar({me, users, selectedTarget, onSelectPeople, 
                 />
             </div>
 
-            <div className="sidebar-resizer" onMouseDown={startResizing} />
+            <div className="sidebar-resizer" onMouseDown={startResizing}/>
         </div>
     );
 }

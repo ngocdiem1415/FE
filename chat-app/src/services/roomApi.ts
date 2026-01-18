@@ -20,7 +20,7 @@ export const roomService = {
       },
     }),
 
-  getRoomMessages: (name: string, page = 1) =>
+  getRoomMessages: (name: string, page: number) =>
     sendSocketSafe({
       action: ACTION_NAME,
       data: {

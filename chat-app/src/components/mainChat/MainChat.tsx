@@ -174,6 +174,7 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, 
         createAt: serverStyleTime,
       });
     } catch (e: any) {
+        // Bắt lỗi chỗ này thành thông báo tự viết
       alert(e?.message || "Upload thất bại");
     } finally {
       setUploading(false);

@@ -12,6 +12,7 @@ export default function RoomActions({onSelectRoom}) {
         roomService.createRoom(name);
     };
 
+    //xử lí báo lỗi => chuyển về service
     const join = () => {
         const name = room.trim();
         if (!name) return;
