@@ -9,6 +9,7 @@ import { formatToLocalTime } from "../../utils/dateUtil";
 
 import { uploadToCloudinary } from "../../services/cloudinaryUpload";
 import { decodeMes, encodeMes } from "../../utils/messageCodec";
+import {STICKER_LIST, STICKER_MAP} from "../../constants/stickerMap.ts";
 
 type ChatMode = "people" | "room";
 
@@ -19,6 +20,7 @@ type Props = {
   messages: ChatMessage[];
   onSendMessage: (msg: ChatMessage) => void;
   isOnline: boolean;
+  onToggleInfo: () => void;
 };
 
 function formatBytes(bytes?: number) {
@@ -33,30 +35,65 @@ function formatBytes(bytes?: number) {
   return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-function fileIcon(mime?: string, name?: string) {
-  const n = (name || "").toLowerCase();
-  const m = (mime || "").toLowerCase();
+// function fileIcon(mime?: string, name?: string) {
+//   const n = (name || "").toLowerCase();
+//   const m = (mime || "").toLowerCase();
+//
+//   if (m.includes("pdf") || n.endsWith(".pdf")) return "📄";
+//   if (m.includes("word") || n.endsWith(".doc") || n.endsWith(".docx")) return "📝";
+//   if (m.includes("excel") || n.endsWith(".xls") || n.endsWith(".xlsx")) return "📊";
+//   if (m.includes("powerpoint") || n.endsWith(".ppt") || n.endsWith(".pptx")) return "📽️";
+//   if (m.includes("zip") || n.endsWith(".zip") || n.endsWith(".rar") || n.endsWith(".7z")) return "🗜️";
+//   return "📎";
+// }
 
-  if (m.includes("pdf") || n.endsWith(".pdf")) return "📄";
-  if (m.includes("word") || n.endsWith(".doc") || n.endsWith(".docx")) return "📝";
-  if (m.includes("excel") || n.endsWith(".xls") || n.endsWith(".xlsx")) return "📊";
-  if (m.includes("powerpoint") || n.endsWith(".ppt") || n.endsWith(".pptx")) return "📽️";
-  if (m.includes("zip") || n.endsWith(".zip") || n.endsWith(".rar") || n.endsWith(".7z")) return "🗜️";
-  return "📎";
-}
-
-const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, isOnline }) => {
+const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, isOnline, onToggleInfo }) => {
   const [text, setText] = useState("");
   const [openEmoji, setOpenEmoji] = useState(false);
+  const [openSticker, setOpenSticker] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const stickerPickerRef = useRef<HTMLDivElement>(null);
+  const stickerBtnRef = useRef<HTMLElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiBtnRef = useRef<HTMLElement>(null);
 
   const title = useMemo(() => {
     if (!target) return "";
     return mode === "people" ? target : `Room: ${target}`;
   }, [mode, target]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+
+      if (
+          openSticker &&
+          stickerPickerRef.current &&
+          !stickerPickerRef.current.contains(target) &&
+          !stickerBtnRef.current?.contains(target)
+      ) {
+        setOpenSticker(false);
+      }
+
+      if (
+          openEmoji &&
+          emojiPickerRef.current &&
+          !emojiPickerRef.current.contains(target) &&
+          !emojiBtnRef.current?.contains(target)
+      ) {
+        setOpenEmoji(false);
+      }
+    }
+
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openSticker, openEmoji]);
 
   const renderStatus = () => {
     // CASE 1: NẾU LÀ ROOM -> Hiển thị text tĩnh
@@ -80,6 +117,26 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const sendSticker = async (stickerKey: string) => {
+    if (!target) return;
+    setOpenSticker(false);
+
+    const encoded = encodeMes({ kind: "sticker", key: stickerKey });
+
+    if (mode === "people") await chatService.sendToPeople(target, encoded);
+    else await chatService.sendToRoom(target, encoded);
+
+    const nowISO = new Date().toISOString();
+    onSendMessage({
+      id: Date.now(),
+      name: me,
+      type: mode === "people" ? 0 : 1,
+      to: target,
+      mes: encoded,
+      createAt: nowISO.replace("T", " ").split(".")[0],
+    });
+  };
 
   const showEmoji = (emojiData: EmojiClickData) => {
     setText((prev) => prev + emojiData.emoji);
@@ -110,6 +167,7 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, 
 
     setText("");
     setOpenEmoji(false);
+    setOpenSticker(false)
   };
 
   const sendAnyFile = async (file: File) => {
@@ -127,7 +185,7 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, 
 
     setUploading(true);
     setOpenEmoji(false);
-
+    setOpenSticker(false);
     try {
       const up = await uploadToCloudinary(file);
 
@@ -203,7 +261,9 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, 
               {renderStatus()}
             </div>
           </div>
-          <div className="icon">
+          <div className="icon"
+               onClick={onToggleInfo}
+               style={{ cursor: "pointer" }}>
             <i className="fa-solid fa-circle-info fa-xl" style={{ color: "#333333" }}></i>
           </div>
         </div>
@@ -222,6 +282,14 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, 
                 <div className="texts">
                   {!isOwn && <span className="sender-name">{msg.name}</span>}
                   {payload.kind === "text" && <p className="content">{payload.text}</p>}
+
+                  {payload.kind === "sticker" && STICKER_MAP[payload.key] && (
+                      <img
+                          src={STICKER_MAP[payload.key]}
+                          alt="sticker"
+                          style={{ width: 130, height: 130, objectFit: 'contain' }}
+                      />
+                  )}
 
                   {payload.kind === "image" && (
                     <img
@@ -312,16 +380,58 @@ const MainChat: React.FC<Props> = ({ me, mode, target, messages, onSendMessage, 
             disabled={uploading}
           />
 
+          <div className="sticker">
+            <i
+                ref={stickerBtnRef}
+                className="fa-solid fa-skull fa-xl"
+                onClick={() => {
+                  setOpenSticker((prev) => !prev)
+                  setOpenEmoji(false);
+                }}
+                style={{cursor: "pointer", color: "#B197FC"}}
+                title="Emoji"
+
+            ></i>
+
+            {openSticker && (
+                <div className="stickerPicker" ref={stickerPickerRef}>
+                  {STICKER_LIST.map(key => (
+                      <div
+                          key={key}
+                          onClick={() => sendSticker(key)}
+                          className="sticker-item"
+                          style={{
+                            cursor: 'pointer', border: '1px solid #eee',
+                            borderRadius: 8, padding: 5,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            height: 100 // Cố định chiều cao ô chọn
+                          }}
+                      >
+                        <img
+                            src={STICKER_MAP[key]}
+                            alt={key}
+                            style={{width: '100%', height: '100%', objectFit: 'contain'}}
+                        />
+                      </div>
+                  ))}
+                </div>
+            )}
+          </div>
+
           <div className="emoji">
             <i
-              className="fa-regular fa-face-smile fa-xl"
-              onClick={() => setOpenEmoji((prev) => !prev)}
+                ref={emojiBtnRef}
+                className="fa-regular fa-face-smile fa-xl"
+              onClick={() => {
+                setOpenEmoji((prev) => !prev);
+                setOpenSticker(false);
+              }}
               style={{ cursor: "pointer" }}
               title="Emoji"
             ></i>
 
             {openEmoji && (
-              <div className="emojiPicker">
+              <div className="emojiPicker" ref={emojiPickerRef}>
                 <EmojiPicker onEmojiClick={showEmoji} />
               </div>
             )}
