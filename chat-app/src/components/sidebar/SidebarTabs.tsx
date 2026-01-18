@@ -40,7 +40,7 @@ export default function SidebarTabs({ users, selectedTarget, onSelectPeople, onS
                 {activeTab === "user" ? (
                     <UserList
                         users={safeUsers}
-                        selectedTarget={selectedTarget}
+                        // selectedTarget={selectedTarget}
                         onSelectPeople={onSelectPeople}
                     />
                 ) : (

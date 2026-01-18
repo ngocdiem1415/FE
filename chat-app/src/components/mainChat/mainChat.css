@@ -32,7 +32,6 @@
 }
 
 .mainChat .topChat .user .texts {
-    display: flex;
     flex-direction: column;
     gap: 5px;
 }
