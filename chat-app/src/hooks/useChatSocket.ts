@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import {useEffect, useRef, useState, useCallback} from "react";
+import {useNavigate} from "react-router-dom";
 import {
     connectSocket,
     onSocketMessage,
@@ -7,15 +7,16 @@ import {
     setSessionExpiredHandler,
     onConnectionChange
 } from "../api/socketClient";
-import { ChatEvent } from "../constants/chatEvents";
-import { userService, peopleService } from "../services/userService";
-import { roomService } from "../services/roomApi";
-import { APP_ROUTES } from "../constants/routes";
+import {ChatEvent} from "../constants/chatEvents";
+import {userService, peopleService} from "../services/userService";
+import {roomService} from "../services/roomApi";
+import {APP_ROUTES} from "../constants/routes";
 
-import type { ChatMessage } from "../types/chatType";
-import type { UserItem } from "../types/userType";
-import type { WsResponse } from "../types/commonType";
-import type { RoomData } from "../types/roomType";
+import type {ChatMessage} from "../types/chatType";
+import type {UserItem} from "../types/userType";
+import type {WsResponse} from "../types/commonType";
+import type {RoomData} from "../types/roomType";
+// import {mainchatController} from "../controller/MainChatController.ts"
 
 export type ChatMode = "people" | "room";
 
@@ -27,8 +28,8 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
     const [currentRoomData, setCurrentRoomData] = useState<RoomData | null>(null);
     const [isTargetOnline, setIsTargetOnline] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
-
-
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const modeRef = useRef<ChatMode>(mode);
     const targetRef = useRef<string | null>(target);
 
@@ -82,25 +83,65 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
 
                 case ChatEvent.GET_PEOPLE_CHAT_MES: {
                     const list = Array.isArray(msg.data) ? msg.data : [];
-                    setMessages(list.sort((a: any, b: any) =>
+                    // TRƯỜNG HỢP HẾT DỮ LIỆU
+                    if (list.length === 0) {
+                        setHasMore(false);
+                        setIsLoadingMore(false);
+                        break;
+                    }
+
+                    const sortedNewList = list.sort((a: any, b: any) =>
                         new Date(a.createAt || 0).getTime() - new Date(b.createAt || 0).getTime()
-                    ));
+                    );
+
+                    setMessages((prev) => {
+                        if (prev.length === 0) return sortedNewList;
+
+                        // Kiểm tra xem tin nhắn này đã tồn tại chưa để tránh trùng lặp
+                        const existingIds = new Set(prev.map(m => m.id));
+                        const uniqueNewList = sortedNewList.filter(m => !existingIds.has(m.id));
+
+                        return [...uniqueNewList, ...prev];
+                    });
+                    setIsLoadingMore(false);
                     break;
                 }
 
-                case ChatEvent.JOIN_ROOM:
-                case ChatEvent.GET_ROOM_CHAT_MES:
+                case ChatEvent.JOIN_ROOM:{
                     if (msg.status === "success") {
                         const rData = msg.data as RoomData;
                         setCurrentRoomData(rData);
-                        const list = rData.chatData || [];
-                        setMessages(list.sort((a: any, b: any) =>
-                            new Date(a.createAt || 0).getTime() - new Date(b.createAt || 0).getTime()
-                        ));
                     }
                     break;
+                }
+                case ChatEvent.GET_ROOM_CHAT_MES: {
+                    const rData = msg.data as RoomData;
+                    const list = rData.chatData || [];
+                    // TRƯỜNG HỢP HẾT DỮ LIỆU
+                    if (list.length === 0) {
+                        setHasMore(false);
+                        setIsLoadingMore(false);
+                        break;
+                    }
 
-                    //Xử lý nhận tin nhắn realtime
+                    const sortedNewList = list.sort((a: any, b: any) =>
+                        new Date(a.createAt || 0).getTime() - new Date(b.createAt || 0).getTime()
+                    );
+
+                    setMessages((prev) => {
+                        if (prev.length === 0) return sortedNewList;
+
+                        // Kiểm tra xem tin nhắn này đã tồn tại chưa để tránh trùng lặp
+                        const existingIds = new Set(prev.map(m => m.id));
+                        const uniqueNewList = sortedNewList.filter(m => !existingIds.has(m.id));
+
+                        return [...uniqueNewList, ...prev];
+                    });
+                    setIsLoadingMore(false);
+                    break;
+                }
+
+                //Xử lý nhận tin nhắn realtime
                 case ChatEvent.SEND_CHAT: {
                     const m = msg.data as ChatMessage | undefined;
                     const currTarget = targetRef.current;
@@ -160,6 +201,7 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
                     userService.checkUserOnline(target);
                 } else {
                     roomService.joinRoom(target);
+                    roomService.getRoomMessages(target, 1);
                 }
             } catch (error) {
                 console.error("Lỗi tải dữ liệu chat:", error);
@@ -174,12 +216,32 @@ const useChatSocket = (mode: ChatMode, target: string | null) => {
         setMessages((prev) => [...prev, msg]);
     }, []);
 
+    const loadMoreMessages = async (nextPage: number) => {
+        if (!target) return;
+        setIsLoadingMore(true)
+        try {
+            if (mode === "people") {
+                console.log(nextPage);
+                await peopleService.getPeopleMessages(target, nextPage);
+            } else {
+                console.log(nextPage);
+                await roomService.getRoomMessages(target, nextPage);
+            }
+        } catch (error) {
+            setIsLoadingMore(false);
+            console.error("Lỗi tải thêm tin nhắn:", error);
+        }
+    };
+
     return {
         users,
         messages,
         currentRoomData,
         isTargetOnline,
         addMessageManually,
+        loadMoreMessages,
+        hasMore,
+        isLoadingMore,
         isConnected
     };
 };
